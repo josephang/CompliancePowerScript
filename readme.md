@@ -1,6 +1,6 @@
-# MeshCentral-ScriptTask
+# CompliancePowerScript
 
-A script running plugin for the [MeshCentral2](https://github.com/Ylianst/MeshCentral) Project. The plugin supports PowerShell, BAT, and Bash scripts. Windows, MacOS, and Linux endpoints are all supported. PowerShell can be run on any OS that has PowerShell installed, not just Windows.
+A Compliance Engine & Script running plugin for the [MeshCentral2](https://github.com/Ylianst/MeshCentral) Project. This plugin extends the original MeshCentral-ScriptTask with GPO-style Policy Enforcement, comprehensive MySQL database support, and an intuitive UI for administrators to assign and monitor compliance across endpoints. It supports PowerShell, BAT, and Bash scripts. Windows, MacOS, and Linux endpoints are all supported. PowerShell can be run on any OS that has PowerShell installed, not just Windows.
 
 ## Important Note
 **This plugin now supports NeDB and MongoDB**

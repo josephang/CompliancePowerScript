@@ -1,9 +1,9 @@
 {
-  "name": "ScriptTask",
+  "name": "CompliancePowerScript",
   "shortName": "scripttask",
-  "version": "0.0.20",
-  "author": "Ryan Blenis",
-  "description": "Script (PowerShell, BAT, Bash) runner for endpoints",
+  "version": "1.0.0",
+  "author": "Joseph Ang & Ryan Blenis",
+  "description": "Compliance Engine & Script Runner with GPO-style policies for endpoints",
   "hasAdminPanel": false,
   "homepage": "https://github.com/josephang/CompliancePowerScript",
   "changelogUrl": "https://raw.githubusercontent.com/josephang/CompliancePowerScript/main/changelog.md",

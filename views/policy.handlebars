@@ -1,0 +1,410 @@
+<html>
+
+<head>
+    <script type="text/javascript" src="scripts/common-0.0.1.js"></script>
+    <style>
+        body {
+            font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+            color: white;
+            background-color: #036;
+            margin: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid #777;
+            padding: 5px;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: #555;
+            text-align: left;
+        }
+
+        button,
+        input,
+        select {
+            padding: 5px;
+            font-family: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        .panel {
+            background-color: #224;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #555;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        h2,
+        h3 {
+            margin-top: 0;
+        }
+
+        .flink {
+            color: #8af;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .form-row {
+            margin-bottom: 10px;
+        }
+
+        .form-row label {
+            display: inline-block;
+            width: 150px;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .col {
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body onload="doOnLoad();">
+
+    <div class="main-container">
+
+        <div class="col" id="colList">
+            <h2>Compliance Policies</h2>
+            <div class="panel">
+                <button onclick="showEditForm(null);">+ Create New Policy</button>
+                <table id="tblPolicies">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Enabled</th>
+                            <th>Detect Script</th>
+                            <th>Remediate Script</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tblPoliciesBody">
+                        <tr>
+                            <td colspan="5">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="panel" id="pnlAssignments" style="display:none;">
+                <h3>Assignments for: <span id="lblAssignedPolicyName"></span></h3>
+                <button onclick="showAssignForm();" id="btnAssign">+ New Assignment</button>
+                <table id="tblAssignments">
+                    <thead>
+                        <tr>
+                            <th>Target Type</th>
+                            <th>Target Name</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tblAssignmentsBody">
+                        <tr>
+                            <td colspan="3">None</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="col hidden" id="colEdit">
+            <h2 id="editTitle">Edit Policy</h2>
+            <div class="panel">
+                <input type="hidden" id="pId" value="" />
+                <div class="form-row">
+                    <label>Name:</label>
+                    <input type="text" id="pName" style="width: 250px;" />
+                </div>
+                <div class="form-row">
+                    <label>Enabled:</label>
+                    <input type="checkbox" id="pEnabled" checked />
+                </div>
+                <div class="form-row">
+                    <label>Detect Script:</label>
+                    <select id="pDetect" style="width: 250px;">
+                        <option value="">(None)</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>Remediate Script:</label>
+                    <select id="pRemediate" style="width: 250px;">
+                        <option value="">(None optional)</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>Cooldown (Mins):</label>
+                    <input type="number" id="pCooldown" value="60" style="width: 80px;" />
+                    <small>Min time between runs per device</small>
+                </div>
+                <div class="form-row">
+                    <label>Notify on Failure:</label>
+                    <input type="checkbox" id="pNotify" checked />
+                </div>
+                <div style="margin-top: 15px;">
+                    <button onclick="savePolicy();">Save</button>
+                    <button onclick="cancelEdit();">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col hidden" id="colAssign">
+            <h2 id="assignTitle">Assign Policy</h2>
+            <div class="panel">
+                <div class="form-row">
+                    <label>Target Type:</label>
+                    <select id="aTargetType" onchange="updateTargetList();">
+                        <option value="node">Single Node</option>
+                        <option value="mesh">Device Group (Mesh)</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>Target:</label>
+                    <select id="aTargetId" style="width: 250px;"></select>
+                </div>
+                <div style="margin-top: 15px;">
+                    <button onclick="saveAssignment();">Assign</button>
+                    <button onclick="cancelAssign();">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="text/javascript">
+        var _policies = [];
+        var _assignments = [];
+        var _currentPolicyId = null;
+
+        function doOnLoad() {
+            if (!window.opener || !window.opener.parent || !window.opener.parent.meshserver) {
+                document.body.innerHTML = "<h3>Error: Unable to connect to MeshCentral Server.</h3>";
+                return;
+            }
+            populateScriptDropdowns();
+            refreshData();
+        }
+
+        function refreshData() {
+            window.opener.parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getPolicies' });
+        }
+
+        // Called by window.opener
+        window.loadPolicyData = function (policies, assignments) {
+            _policies = policies || [];
+            _assignments = assignments || [];
+            renderPolicies();
+            if (_currentPolicyId) {
+                viewAssignments(_currentPolicyId);
+            }
+        };
+
+        function populateScriptDropdowns() {
+            var selD = document.getElementById('pDetect');
+            var selR = document.getElementById('pRemediate');
+            selD.innerHTML = '<option value="">(Select Detection Script)</option>';
+            selR.innerHTML = '<option value="">(None - Detection Only)</option>';
+
+            var sTree = window.opener.scriptTree || [];
+            sTree.forEach(function (s) {
+                if (s.type === 'script') {
+                    selD.options.add(new Option(s.name, s._id));
+                    selR.options.add(new Option(s.name, s._id));
+                }
+            });
+        }
+
+        function getScriptName(id) {
+            if (!id) return "None";
+            var sTree = window.opener.scriptTree || [];
+            var s = sTree.find(x => x._id === id);
+            return s ? s.name : "Unknown (" + id + ")";
+        }
+
+        function renderPolicies() {
+            var tbody = document.getElementById('tblPoliciesBody');
+            tbody.innerHTML = '';
+            if (_policies.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5">No policies found.</td></tr>';
+                return;
+            }
+
+            _policies.forEach(function (p) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = `
+            <td><b>${p.name}</b><br/><small>v${p.version || 1}</small></td>
+            <td>${p.enabled ? 'Yes' : 'No'}</td>
+            <td>${getScriptName(p.detectScriptId)}</td>
+            <td>${getScriptName(p.remediateScriptId)}</td>
+            <td>
+                <span class="flink" onclick="viewAssignments('${p._id}', '${p.name.replace(/'/g, "\\'")}');">Assignments</span> |
+                <span class="flink" onclick="showEditForm('${p._id}');">Edit</span> |
+                <span class="flink" style="color:#f88" onclick="deletePolicy('${p._id}');">Delete</span>
+            </td>
+        `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function showEditForm(id) {
+            document.getElementById('colEdit').classList.remove('hidden');
+            document.getElementById('colAssign').classList.add('hidden');
+
+            if (id) {
+                var p = _policies.find(x => x._id === id);
+                document.getElementById('editTitle').innerText = 'Edit Policy';
+                document.getElementById('pId').value = p._id;
+                document.getElementById('pName').value = p.name;
+                document.getElementById('pEnabled').checked = p.enabled;
+                document.getElementById('pDetect').value = p.detectScriptId || '';
+                document.getElementById('pRemediate').value = p.remediateScriptId || '';
+                document.getElementById('pCooldown').value = p.cooldownMinutes || 60;
+                document.getElementById('pNotify').checked = p.notifyOnFail;
+            } else {
+                document.getElementById('editTitle').innerText = 'Create New Policy';
+                document.getElementById('pId').value = '';
+                document.getElementById('pName').value = 'New Compliance Policy';
+                document.getElementById('pEnabled').checked = true;
+                document.getElementById('pDetect').value = '';
+                document.getElementById('pRemediate').value = '';
+                document.getElementById('pCooldown').value = 60;
+                document.getElementById('pNotify').checked = true;
+            }
+        }
+
+        function cancelEdit() {
+            document.getElementById('colEdit').classList.add('hidden');
+        }
+
+        function savePolicy() {
+            if (!document.getElementById('pDetect').value) {
+                alert("A Detect Script is required!");
+                return;
+            }
+            var p = {
+                name: document.getElementById('pName').value,
+                enabled: document.getElementById('pEnabled').checked,
+                detectScriptId: document.getElementById('pDetect').value,
+                remediateScriptId: document.getElementById('pRemediate').value,
+                cooldownMinutes: parseInt(document.getElementById('pCooldown').value) || 60,
+                notifyOnFail: document.getElementById('pNotify').checked
+            };
+            var id = document.getElementById('pId').value;
+            if (id) p._id = id;
+
+            window.opener.parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'savePolicy', policy: p });
+            cancelEdit();
+        }
+
+        function deletePolicy(id) {
+            if (confirm('Are you sure you want to delete this policy? Assignments and state history will also be removed.')) {
+                window.opener.parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'deletePolicy', id: id });
+                if (_currentPolicyId === id) { document.getElementById('pnlAssignments').style.display = 'none'; _currentPolicyId = null; }
+            }
+        }
+
+        function viewAssignments(id, name) {
+            _currentPolicyId = id;
+            if (name) document.getElementById('lblAssignedPolicyName').innerText = name;
+            document.getElementById('pnlAssignments').style.display = 'block';
+            document.getElementById('colAssign').classList.add('hidden');
+
+            var tbody = document.getElementById('tblAssignmentsBody');
+            tbody.innerHTML = '';
+
+            var myAssigns = _assignments.filter(x => x.policyId === id);
+            if (myAssigns.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3">No assignments. Policy is inactive.</td></tr>';
+                return;
+            }
+
+            myAssigns.forEach(function (a) {
+                var tr = document.createElement('tr');
+                var targetName = a.targetId;
+                if (a.targetType === 'node' && window.opener.parent.nodes) {
+                    var n = window.opener.parent.nodes.find(x => x._id === a.targetId);
+                    if (n) targetName = n.name;
+                } else if (a.targetType === 'mesh' && window.opener.parent.meshes) {
+                    var m = window.opener.parent.meshes[a.targetId];
+                    if (m) targetName = m.name;
+                }
+
+                tr.innerHTML = `
+            <td>${a.targetType}</td>
+            <td>${targetName}</td>
+            <td><span class="flink" style="color:#f88" onclick="deleteAssignment('${a._id}');">Remove</span></td>
+        `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function showAssignForm() {
+            if (!_currentPolicyId) return;
+            document.getElementById('colAssign').classList.remove('hidden');
+            updateTargetList();
+        }
+
+        function cancelAssign() {
+            document.getElementById('colAssign').classList.add('hidden');
+        }
+
+        function updateTargetList() {
+            var type = document.getElementById('aTargetType').value;
+            var sel = document.getElementById('aTargetId');
+            sel.innerHTML = '';
+
+            if (type === 'node') {
+                var nodes = window.opener.parent.nodes || [];
+                nodes.forEach(function (n) {
+                    if (n.mtype === 2) sel.options.add(new Option(n.name, n._id));
+                });
+            } else if (type === 'mesh') {
+                var meshes = window.opener.parent.meshes || {};
+                for (var key in meshes) {
+                    if (meshes[key].mtype === 2) sel.options.add(new Option(meshes[key].name, key));
+                }
+            }
+        }
+
+        function saveAssignment() {
+            var typ = document.getElementById('aTargetType').value;
+            var tid = document.getElementById('aTargetId').value;
+            if (!tid) return;
+
+            var a = {
+                policyId: _currentPolicyId,
+                targetType: typ,
+                targetId: tid
+            };
+            window.opener.parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'savePolicyAssignment', assignment: a });
+            cancelAssign();
+        }
+
+        function deleteAssignment(id) {
+            if (confirm('Remove assignment?')) {
+                window.opener.parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'deletePolicyAssignment', id: id });
+            }
+        }
+    </script>
+</body>
+
+</html>

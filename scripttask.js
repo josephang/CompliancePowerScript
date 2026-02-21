@@ -271,6 +271,10 @@ module.exports.scripttask = function (parent) {
                 var vars = {};
                 res.render(obj.VIEWS + 'schedule', vars);
                 return;
+            } else if (req.query.policy == 1) {
+                var vars = {};
+                res.render(obj.VIEWS + 'policy', vars);
+                return;
             }
             // default user view (tree)
             vars.scriptTree = 'null';

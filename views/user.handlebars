@@ -2,26 +2,8 @@
 
 <head>
   <script type="text/javascript" src="scripts/common-0.0.1.js"></script>
-  <!-- Veritimo Theme for plugin iframe -->
-  <link rel="stylesheet" href="/veritimo-theme/veritimo.css" id="veritimo-css">
-  <script>
-    // Sync dark/light theme from parent MeshCentral page
-    (function () {
-      try {
-        var stored = (window.parent && window.parent.localStorage)
-          ? window.parent.localStorage.getItem('veritimo-theme') : null;
-        var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var theme = stored || (sysDark ? 'dark' : 'light');
-        document.documentElement.setAttribute('data-theme', theme);
-      } catch (e) { }
-    }());
-  </script>
 </head>
 <style>
-  body {
-    font-family: 'Inter', 'Trebuchet MS', Arial, Helvetica, sans-serif;
-  }
-
   #dropBlock {
     /*background-color: gray;
       text-align: center;
@@ -263,7 +245,6 @@
       <span onclick="goPolicy();" id="tabPolicies">Policies</span>
       <span onclick="goCompliance();" id="tabCompliance">Compliance</span>
       <span onclick="goSmtp();" id="tabSmtp">Email Notifications</span>
-      <span onclick="goTheme();" id="tabTheme">&#127912; Theme</span>
     </div>
     <div id="scripts_endpoints">
       <div id="scriptToolbar"
@@ -910,139 +891,7 @@
     </div>
   </div>
 
-  <!-- ██ Veritimo Theme Settings Panel ██ -->
-  <div id="theme_endpoints" style="display:none; min-height:100%; overflow:auto;">
-    <div style="max-width:680px; margin:0 auto; padding:28px 24px;">
 
-      <!-- Header -->
-      <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
-        <span style="font-size:28px;">&#127912;</span>
-        <div>
-          <h2 style="margin:0 0 2px; font-size:20px; font-weight:700;">Veritimo Theme</h2>
-          <p style="margin:0; font-size:13px; color:var(--vt-text-muted, #6b7280);">Customise the look and feel of
-            MeshCentral without modifying any core files.</p>
-        </div>
-      </div>
-
-      <!-- ── Enable Theme ───────────────────────────────────── -->
-      <div class="vt-setting-card"
-        style="background:var(--vt-surface,#fff); border:1px solid var(--vt-border,#e0e3ea); border-radius:8px; padding:16px 20px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
-        <div>
-          <div style="font-weight:600; font-size:14px;">Enable Veritimo Theme</div>
-          <div style="font-size:12px; color:var(--vt-text-muted,#6b7280); margin-top:2px;">Apply modern styling to all
-            MeshCentral pages. Reload the page after disabling.</div>
-        </div>
-        <label class="vt-toggle"
-          style="position:relative; display:inline-block; width:42px; height:24px; flex-shrink:0;">
-          <input type="checkbox" id="vt-enable" onchange="vtSave()"
-            style="opacity:0; width:0; height:0; position:absolute;">
-          <span class="vt-slider"
-            style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; border-radius:24px; background:#ccc; transition:.25s;"></span>
-        </label>
-      </div>
-
-      <!-- ── Dark Mode ──────────────────────────────────────── -->
-      <div class="vt-setting-card"
-        style="background:var(--vt-surface,#fff); border:1px solid var(--vt-border,#e0e3ea); border-radius:8px; padding:16px 20px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
-        <div>
-          <div style="font-weight:600; font-size:14px;">Dark Mode</div>
-          <div style="font-size:12px; color:var(--vt-text-muted,#6b7280); margin-top:2px;">Choose between light, dark,
-            or follow your operating system.</div>
-        </div>
-        <select id="vt-darkmode" onchange="vtSave()"
-          style="padding:5px 10px; border-radius:6px; font-size:13px; border:1px solid var(--vt-border,#e0e3ea); background:var(--vt-surface,#fff); color:var(--vt-text,#1a1d23);">
-          <option value="system">Follow System</option>
-          <option value="light">Always Light</option>
-          <option value="dark">Always Dark</option>
-        </select>
-      </div>
-
-      <!-- ── Accent Colour ──────────────────────────────────── -->
-      <div class="vt-setting-card"
-        style="background:var(--vt-surface,#fff); border:1px solid var(--vt-border,#e0e3ea); border-radius:8px; padding:16px 20px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
-        <div>
-          <div style="font-weight:600; font-size:14px;">Accent Colour</div>
-          <div style="font-size:12px; color:var(--vt-text-muted,#6b7280); margin-top:2px;">Primary colour used for
-            buttons, links, and highlights.</div>
-        </div>
-        <input type="color" id="vt-accent" value="#3b6ef5" onchange="vtSave()"
-          style="width:42px; height:32px; border:none; border-radius:6px; cursor:pointer; padding:0;">
-      </div>
-
-      <!-- ── Border Radius ──────────────────────────────────── -->
-      <div class="vt-setting-card"
-        style="background:var(--vt-surface,#fff); border:1px solid var(--vt-border,#e0e3ea); border-radius:8px; padding:16px 20px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
-        <div style="flex:1;">
-          <div style="font-weight:600; font-size:14px;">Corner Radius</div>
-          <div style="font-size:12px; color:var(--vt-text-muted,#6b7280); margin-top:2px;">How rounded are cards and
-            buttons? <span id="vt-radius-val">8px</span></div>
-        </div>
-        <input type="range" id="vt-radius" min="0" max="16" value="8" oninput="vtRadiusPreview(this.value)"
-          onchange="vtSave()" style="width:140px; margin-left:16px;">
-      </div>
-
-      <!-- ── Font Size ───────────────────────────────────────── -->
-      <div class="vt-setting-card"
-        style="background:var(--vt-surface,#fff); border:1px solid var(--vt-border,#e0e3ea); border-radius:8px; padding:16px 20px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
-        <div style="flex:1;">
-          <div style="font-weight:600; font-size:14px;">Base Font Size</div>
-          <div style="font-size:12px; color:var(--vt-text-muted,#6b7280); margin-top:2px;">Scales all UI text. Current:
-            <span id="vt-fs-val">14px</span>
-          </div>
-        </div>
-        <input type="range" id="vt-fontsize" min="11" max="18" value="14" oninput="vtFsPreview(this.value)"
-          onchange="vtSave()" style="width:140px; margin-left:16px;">
-      </div>
-
-      <!-- ── Floating Toggle Button ─────────────────────────── -->
-      <div class="vt-setting-card"
-        style="background:var(--vt-surface,#fff); border:1px solid var(--vt-border,#e0e3ea); border-radius:8px; padding:16px 20px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
-        <div>
-          <div style="font-weight:600; font-size:14px;">Show Dark Mode Toggle Button</div>
-          <div style="font-size:12px; color:var(--vt-text-muted,#6b7280); margin-top:2px;">Floating ☽/☀ button fixed to
-            the bottom-right corner of every page.</div>
-        </div>
-        <label class="vt-toggle"
-          style="position:relative; display:inline-block; width:42px; height:24px; flex-shrink:0;">
-          <input type="checkbox" id="vt-floatbtn" onchange="vtSave()" checked
-            style="opacity:0; width:0; height:0; position:absolute;">
-          <span class="vt-slider"
-            style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; border-radius:24px; background:#ccc; transition:.25s;"></span>
-        </label>
-      </div>
-
-      <!-- ── Live Preview ───────────────────────────────────── -->
-      <div style="margin-top:28px;">
-        <div
-          style="font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--vt-text-muted,#6b7280); margin-bottom:10px;">
-          LIVE PREVIEW</div>
-        <div id="vt-preview"
-          style="background:var(--vt-surface,#fff); border:1px solid var(--vt-border,#e0e3ea); border-radius:var(--vt-radius,8px); padding:18px 20px;">
-          <div style="font-weight:700; font-size:15px; margin-bottom:8px;">Veritimo Design System</div>
-          <p style="font-size:13px; color:var(--vt-text-muted,#6b7280); margin:0 0 12px;">Buttons, badges, and inputs
-            update in real-time as you adjust settings above.</p>
-          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-            <button id="vt-prev-btn"
-              style="padding:5px 14px; border-radius:var(--vt-radius-sm,5px); border:none; font-weight:500; font-size:13px; cursor:pointer;">Primary
-              Button</button>
-            <span id="vt-prev-badge"
-              style="padding:2px 10px; border-radius:999px; font-size:11px; font-weight:600; color:#fff;">Badge</span>
-            <input type="text" placeholder="Sample input"
-              style="padding:5px 9px; border-radius:var(--vt-radius-sm,5px); border:1px solid var(--vt-border,#e0e3ea); font-size:13px;">
-          </div>
-        </div>
-      </div>
-
-      <!-- Reset -->
-      <div style="margin-top:18px; text-align:right;">
-        <button onclick="vtReset()"
-          style="padding:5px 14px; border-radius:6px; border:1px solid var(--vt-border,#e0e3ea); background:transparent; color:var(--vt-text-muted,#6b7280); font-size:13px; cursor:pointer;">&#10226;
-          Reset to Defaults</button>
-        <span id="vt-save-status" style="margin-left:12px; font-size:12px; color:var(--vt-success,#28a745);"></span>
-      </div>
-
-    </div>
-  </div>
   <script type="text/javascript">
     var _policies = [];
     var _assignments = [];
@@ -1346,7 +1195,6 @@
       document.getElementById('policy_endpoints').style.display = 'none';
       document.getElementById('smtp_endpoints').style.display = 'none';
       document.getElementById('compliance_endpoints').style.display = 'none';
-      document.getElementById('theme_endpoints').style.display = 'none';
       document.getElementById('scripts_endpoints').style.display = 'block';
       setActiveTab('tabScripts');
       parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getScripts' });
@@ -1593,7 +1441,6 @@
       document.getElementById('scripts_endpoints').style.display = 'none';
       document.getElementById('smtp_endpoints').style.display = 'none';
       document.getElementById('compliance_endpoints').style.display = 'none';
-      document.getElementById('theme_endpoints').style.display = 'none';
       document.getElementById('policy_endpoints').style.display = 'block';
       setActiveTab('tabPolicies');
       doOnLoadPolicy();
@@ -1622,7 +1469,6 @@
       document.getElementById('scripts_endpoints').style.display = 'none';
       document.getElementById('policy_endpoints').style.display = 'none';
       document.getElementById('compliance_endpoints').style.display = 'none';
-      document.getElementById('theme_endpoints').style.display = 'none';
       document.getElementById('smtp_endpoints').style.display = 'block';
       setActiveTab('tabSmtp');
       parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getSmtpConfig' });
@@ -1633,175 +1479,11 @@
       document.getElementById('scripts_endpoints').style.display = 'none';
       document.getElementById('policy_endpoints').style.display = 'none';
       document.getElementById('smtp_endpoints').style.display = 'none';
-      document.getElementById('theme_endpoints').style.display = 'none';
       document.getElementById('compliance_endpoints').style.display = 'block';
       setActiveTab('tabCompliance');
       var tbody = document.getElementById('cev-overview-body');
       if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="color:#999;font-style:italic;">Loading...</td></tr>';
-      parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getComplianceOverview' });
       parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getRetentionRules' });
-      resizeIframe();
-    }
-
-    // ── Veritimo Toggle CSS ──────────────────────────────────────────────
-    (function () {
-      var s = document.createElement('style');
-      s.textContent = [
-        '.vt-slider { background:#ccc; }',
-        '.vt-toggle input:checked + .vt-slider { background: var(--vt-accent,#3b6ef5); }',
-        '.vt-slider::before { content:""; position:absolute; height:18px; width:18px; bottom:3px; left:3px; background:#fff; border-radius:50%; transition:.25s; }',
-        '.vt-toggle input:checked + .vt-slider::before { transform: translateX(18px); }'
-      ].join('\n');
-      document.head.appendChild(s);
-    }());
-
-    // ── Veritimo Theme Settings JS ────────────────────────────────────────
-    var VT_DEFAULTS = { enabled: true, darkmode: 'system', accent: '#3b6ef5', radius: 8, fontsize: 14, floatbtn: true };
-
-    function vtGetStoredOrDefault(key) {
-      var k = 'veritimo-' + key;
-      var v = localStorage.getItem(k);
-      if (v === null) return VT_DEFAULTS[key];
-      if (v === 'true') return true;
-      if (v === 'false') return false;
-      var n = parseFloat(v);
-      return isNaN(n) ? v : n;
-    }
-
-    function vtLoad() {
-      // Read MC core preference as highest-priority source
-      var mcDark = null;
-      try { mcDark = parent.localStorage.getItem('darkmode'); } catch (e) { }
-      if (mcDark === null) { try { mcDark = localStorage.getItem('darkmode'); } catch (e) { } }
-
-      document.getElementById('vt-enable').checked = vtGetStoredOrDefault('enabled') !== false;
-      var dmVal = vtGetStoredOrDefault('darkmode') || 'system';
-      if (mcDark === 'yes') dmVal = 'dark';
-      else if (mcDark === '' || mcDark === 'no') dmVal = 'light';
-      document.getElementById('vt-darkmode').value = dmVal;
-      document.getElementById('vt-accent').value = vtGetStoredOrDefault('accent') || '#3b6ef5';
-      var r = parseInt(vtGetStoredOrDefault('radius'), 10) || 8;
-      document.getElementById('vt-radius').value = r;
-      document.getElementById('vt-radius-val').textContent = r + 'px';
-      var fs = parseInt(vtGetStoredOrDefault('fontsize'), 10) || 14;
-      document.getElementById('vt-fontsize').value = fs;
-      document.getElementById('vt-fs-val').textContent = fs + 'px';
-      document.getElementById('vt-floatbtn').checked = vtGetStoredOrDefault('floatbtn') !== false;
-      vtUpdatePreview();
-    }
-
-    function vtUpdatePreview() {
-      var accent = document.getElementById('vt-accent').value;
-      var r = document.getElementById('vt-radius').value;
-      var btn = document.getElementById('vt-prev-btn');
-      var badge = document.getElementById('vt-prev-badge');
-      if (btn) { btn.style.background = accent; btn.style.color = '#fff'; btn.style.borderRadius = r + 'px'; }
-      if (badge) { badge.style.background = accent; badge.style.borderRadius = '999px'; }
-    }
-
-    function vtRadiusPreview(v) {
-      document.getElementById('vt-radius-val').textContent = v + 'px';
-      vtUpdatePreview();
-    }
-    function vtFsPreview(v) {
-      document.getElementById('vt-fs-val').textContent = v + 'px';
-    }
-
-    function vtApply(cfg) {
-      var isDark;
-      if (cfg.darkmode === 'dark') {
-        isDark = true;
-      } else if (cfg.darkmode === 'light') {
-        isDark = false;
-      } else {
-        isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      }
-      var resolvedTheme = isDark ? 'dark' : 'light';
-
-      // If the parent page has veritimoApplyTheme, delegate to it (it handles body class + observer).
-      try {
-        if (typeof parent.veritimoApplyTheme === 'function') {
-          parent.veritimoApplyTheme(resolvedTheme);
-        } else {
-          // Fallback: manually apply to parent if veritimo.js hasn't loaded there yet
-          var pd = parent.document;
-          pd.documentElement.setAttribute('data-theme', resolvedTheme);
-          if (isDark) pd.body.classList.add('darkmode');
-          else pd.body.classList.remove('darkmode');
-        }
-      } catch (e) { /* cross-origin — skip */ }
-
-      // Apply to this iframe document too
-      document.documentElement.setAttribute('data-theme', resolvedTheme);
-
-      // CSS custom-property overrides (accent, radius, font size)
-      var targets = [];
-      try { targets.push(parent.document); } catch (e) { }
-      targets.push(document);
-      targets.forEach(function (doc) {
-        var html = doc.documentElement;
-        if (cfg.enabled !== false) {
-          var accent = cfg.accent || '#3b6ef5';
-          var rad = (cfg.radius || 8) + 'px';
-          var radSm = Math.max(0, (cfg.radius || 8) - 3) + 'px';
-          var fs = (cfg.fontsize || 14) + 'px';
-          html.style.setProperty('--vt-accent', accent);
-          html.style.setProperty('--vt-accent-hover', accent);
-          html.style.setProperty('--vt-radius', rad);
-          html.style.setProperty('--vt-radius-sm', radSm);
-          doc.body && (doc.body.style.fontSize = fs);
-          // Floating toggle button visibility
-          var fbtn = doc.getElementById('vt-darkmode-btn');
-          if (fbtn) fbtn.style.display = cfg.floatbtn !== false ? 'flex' : 'none';
-        } else {
-          // Theme disabled: remove Veritimo CSS link
-          var lnk = doc.getElementById('veritimo-css');
-          if (lnk) lnk.remove();
-        }
-      });
-
-      // Persist to both keys
-      try {
-        parent.localStorage.setItem('veritimo-theme', resolvedTheme);
-        parent.localStorage.setItem('darkmode', isDark ? 'yes' : '');
-      } catch (e) { }
-      try {
-        localStorage.setItem('veritimo-theme', resolvedTheme);
-        localStorage.setItem('darkmode', isDark ? 'yes' : '');
-      } catch (e) { }
-    }
-
-    function vtSave() {
-      var cfg = {
-        enabled: document.getElementById('vt-enable').checked,
-        darkmode: document.getElementById('vt-darkmode').value,
-        accent: document.getElementById('vt-accent').value,
-        radius: parseInt(document.getElementById('vt-radius').value, 10),
-        fontsize: parseInt(document.getElementById('vt-fontsize').value, 10),
-        floatbtn: document.getElementById('vt-floatbtn').checked
-      };
-      Object.keys(cfg).forEach(function (k) { localStorage.setItem('veritimo-' + k, cfg[k]); });
-      vtApply(cfg);
-      vtUpdatePreview();
-      var st = document.getElementById('vt-save-status');
-      if (st) { st.textContent = '\u2714 Applied'; setTimeout(function () { st.textContent = ''; }, 2000); }
-    }
-
-    function vtReset() {
-      Object.keys(VT_DEFAULTS).forEach(function (k) { localStorage.removeItem('veritimo-' + k); });
-      vtLoad();
-      vtApply(VT_DEFAULTS);
-      vtUpdatePreview();
-    }
-
-    function goTheme() {
-      document.getElementById('scripts_endpoints').style.display = 'none';
-      document.getElementById('policy_endpoints').style.display = 'none';
-      document.getElementById('compliance_endpoints').style.display = 'none';
-      document.getElementById('smtp_endpoints').style.display = 'none';
-      document.getElementById('theme_endpoints').style.display = 'block';
-      setActiveTab('tabTheme');
-      vtLoad();
       resizeIframe();
     }
 

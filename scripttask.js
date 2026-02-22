@@ -57,15 +57,7 @@ module.exports.scripttask = function (parent) {
             obj.enforceDeviceEventRetention();
             obj.retentionTimer = setInterval(obj.enforceDeviceEventRetention, 6 * 60 * 60 * 1000);
 
-            // ── Veritimo Theme: serve public/ as static files ──────────────
-            var express = require('express');
-            var webserver = obj.meshServer.webserver;
-            if (webserver && webserver.app && typeof webserver.app.use === 'function') {
-                webserver.app.use('/veritimo-theme', express.static(__dirname + '/public'));
-                console.log('CompliancePowerScript: Veritimo theme assets mounted at /veritimo-theme');
-            } else {
-                console.log('CompliancePowerScript: Could not mount Veritimo theme (webserver.app unavailable)');
-            }
+
 
             console.log("CompliancePowerScript: DB Successfully Initialized!");
         } catch (err) {
@@ -74,13 +66,7 @@ module.exports.scripttask = function (parent) {
         }
     };
 
-    // Called by the front-end plugin loader — inject Veritimo theme into parent page
-    obj.getPageInject = function () {
-        return [
-            '<link rel="stylesheet" href="/veritimo-theme/veritimo.css" id="veritimo-css">',
-            '<script src="/veritimo-theme/veritimo.js" id="veritimo-js" defer></script>'
-        ].join('\n');
-    };
+
 
     obj.hook_agentCoreIsStable = function (agent) {
         if (typeof agent === 'object' && agent.dbNodeKey) {
@@ -364,20 +350,7 @@ module.exports.scripttask = function (parent) {
     };
 
     obj.onDeviceRefreshEnd = function () {
-        // ── Veritimo Theme: inject into parent MeshCentral page if not already loaded
-        try {
-            var parentDoc = (typeof parent !== 'undefined' && parent.document) ? parent.document : document;
-            if (!parentDoc.getElementById('veritimo-css')) {
-                var link = parentDoc.createElement('link');
-                link.rel = 'stylesheet'; link.href = '/veritimo-theme/veritimo.css'; link.id = 'veritimo-css';
-                parentDoc.head.appendChild(link);
-            }
-            if (!parentDoc.getElementById('veritimo-js')) {
-                var script = parentDoc.createElement('script');
-                script.src = '/veritimo-theme/veritimo.js'; script.id = 'veritimo-js'; script.defer = true;
-                parentDoc.head.appendChild(script);
-            }
-        } catch (e) { /* cross-origin or unavailable — safe to ignore */ }
+
 
         pluginHandler.registerPluginTab({
             tabTitle: 'ScriptPolicyCompliance',

@@ -1475,15 +1475,29 @@
       return '';
     }
 
-    function getTzLabel(d) {
-      var m = d.toString().match(/\\((.*)\\)/);
-      return m ? m[1] : 'Local Time';
+    // Helper mapping for common IANA timezones to short codes to satisfy user format request
+    var _tzAcronyms = {
+      "America/Los_Angeles": "PST/PDT", "America/Denver": "MST/MDT",
+      "America/Chicago": "CST/CDT", "America/New_York": "EST/EDT",
+      "Europe/London": "GMT/BST", "Europe/Paris": "CET/CEST",
+      "Europe/Berlin": "CET/CEST", "Asia/Tokyo": "JST",
+      "Australia/Sydney": "AEST/AEDT", "Asia/Shanghai": "CST",
+      "Asia/Kolkata": "IST"
+    };
+
+    function getTzLabel() {
+      try {
+        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        return _tzAcronyms[tz] || tz;
+      } catch (e) {
+        return 'Local Time';
+      }
     }
 
     function fmtTs(ts) {
       if (!ts) return '-';
       var d = new Date(ts * 1000);
-      return d.toLocaleString() + ' (' + getTzLabel(d) + ')';
+      return d.toLocaleString() + ' (' + getTzLabel() + ')';
     }
 
     var complianceOverviewData = [];
@@ -1500,17 +1514,17 @@
           parseInt(wmi[1]), parseInt(wmi[2]) - 1, parseInt(wmi[3]),
           parseInt(wmi[4]), parseInt(wmi[5]), parseInt(wmi[6])
         ));
-        return d.toLocaleString() + ' (' + getTzLabel(d) + ')';
+        return d.toLocaleString() + ' (' + getTzLabel() + ')';
       }
       // Unix timestamp (number or numeric string > 1e9)
       var n = Number(val);
       if (!isNaN(n) && n > 1e9) {
         var ud = new Date(n < 1e12 ? n * 1000 : n);
-        return ud.toLocaleString() + ' (' + getTzLabel(ud) + ')';
+        return ud.toLocaleString() + ' (' + getTzLabel() + ')';
       }
       // ISO / already human-readable
       var d2 = new Date(val);
-      if (!isNaN(d2)) return d2.toLocaleString() + ' (' + getTzLabel(d2) + ')';
+      if (!isNaN(d2)) return d2.toLocaleString() + ' (' + getTzLabel() + ')';
       return String(val);
     }
 
@@ -1523,6 +1537,7 @@
       }
       var html = '';
       rows.forEach(function (row) {
+        var name = getNodeName(row.nodeId);
         var dispIp = row.lastIp || getNodeLastIp(row.nodeId);
         var ipLink = dispIp
           ? '<a href="https://iplocation.com/?ip=' + encodeURIComponent(dispIp) + '" target="_blank" rel="noopener" style="color:#0066cc;">' + dispIp + '</a>'

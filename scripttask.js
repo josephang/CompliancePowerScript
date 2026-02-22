@@ -21,6 +21,9 @@ module.exports.scripttask = function (parent) {
         'resizeContent',
         'historyData',
         'variableData',
+        'policyData',
+        'smtpData',
+        'complianceStateData',
         'malix_triggerOption',
         'hook_agentCoreIsStable',
         'server_startup'
@@ -339,6 +342,18 @@ module.exports.scripttask = function (parent) {
 
     obj.variableData = function (message) {
         if (typeof pluginHandler.scripttask.loadVariables == 'function') pluginHandler.scripttask.loadVariables(message);
+    };
+
+    obj.policyData = function (message) {
+        if (typeof pluginHandler.scripttask.policyData == 'function') pluginHandler.scripttask.policyData(message);
+    };
+
+    obj.smtpData = function (message) {
+        if (typeof pluginHandler.scripttask.smtpData == 'function') pluginHandler.scripttask.smtpData(message);
+    };
+
+    obj.complianceStateData = function (message) {
+        if (typeof pluginHandler.scripttask.complianceStateData == 'function') pluginHandler.scripttask.complianceStateData(message);
     };
 
     obj.determineNextJobTime = function (s) {
@@ -864,13 +879,16 @@ module.exports.scripttask = function (parent) {
             case 'getPolicies':
                 obj.db.getPolicies().then(policies => {
                     obj.db.getAllPolicyAssignments().then(assignments => {
-                        myparent.send(JSON.stringify({ action: 'plugin', plugin: 'scripttask', pluginaction: 'policyData', policies: policies, assignments: assignments }));
+                        var targets = ['*', 'server-users'];
+                        obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'policyData', policies: policies, assignments: assignments });
                     }).catch(e => {
-                        myparent.send(JSON.stringify({ action: 'plugin', plugin: 'scripttask', pluginaction: 'policyData', error: "Assignments Error: " + String(e) }));
+                        var targets = ['*', 'server-users'];
+                        obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'policyData', error: 'Assignments Error: ' + String(e) });
                         console.log("CompliancePowerScript ERROR getAllPolicyAssignments:", e);
                     });
                 }).catch(e => {
-                    myparent.send(JSON.stringify({ action: 'plugin', plugin: 'scripttask', pluginaction: 'policyData', error: "Policies Error: " + String(e) }));
+                    var targets = ['*', 'server-users'];
+                    obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'policyData', error: 'Policies Error: ' + String(e) });
                     console.log("CompliancePowerScript ERROR getPolicies:", e);
                 });
                 break;
@@ -906,9 +924,11 @@ module.exports.scripttask = function (parent) {
                 break;
             case 'getSmtpConfig':
                 obj.db.getSmtpConfig().then(config => {
-                    myparent.send(JSON.stringify({ action: 'plugin', plugin: 'scripttask', pluginaction: 'smtpData', config: config[0] || {} }));
+                    var targets = ['*', 'server-users'];
+                    obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'smtpData', config: config[0] || {} });
                 }).catch(e => {
-                    myparent.send(JSON.stringify({ action: 'plugin', plugin: 'scripttask', pluginaction: 'smtpData', error: String(e) }));
+                    var targets = ['*', 'server-users'];
+                    obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'smtpData', error: String(e) });
                     console.log("CompliancePowerScript ERROR getSmtpConfig:", e);
                 });
                 break;
@@ -925,7 +945,8 @@ module.exports.scripttask = function (parent) {
             case 'getComplianceState':
                 obj.db.getComplianceState(command.nodeId).then(state => {
                     obj.db.getComplianceHistory(command.nodeId, command.policyId).then(history => {
-                        myparent.send(JSON.stringify({ action: 'plugin', plugin: 'scripttask', pluginaction: 'complianceStateData', state: state, history: history }));
+                        var targets = ['*', 'server-users'];
+                        obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'complianceStateData', state: state, history: history });
                     });
                 });
                 break;

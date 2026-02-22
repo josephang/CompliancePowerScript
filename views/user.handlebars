@@ -1167,13 +1167,13 @@
       }
     }
     parent.pluginHandler.scripttask.policyData = function (message) {
-      loadPolicyData(message.policies, message.assignments, message.error);
+      loadPolicyData(message.event.policies, message.event.assignments, message.event.error);
     }
     parent.pluginHandler.scripttask.smtpData = function (message) {
-      loadSmtpData(message.config, message.error);
+      loadSmtpData(message.event.config, message.event.error);
     }
     parent.pluginHandler.scripttask.complianceStateData = function (message) {
-      var state = message.state || [];
+      var state = message.event.state || [];
       var policyNames = {};
       // Fetch policies to map names? They are not cached in user.handlebars, maybe just request them or
       // rely on ID for now if policies aren't loaded.

@@ -140,7 +140,9 @@
                     <input type="checkbox" id="pEnabled" checked />
                 </div>
                 <div class="form-row">
-                    <label>Detect Script:</label>
+                    <label
+                        title="Detection scripts MUST exit with code 0 if the device is Compliant, and any non-zero exit code (e.g. 1) if it is Non-Compliant.">Detect
+                        Script ℹ️:</label>
                     <select id="pDetect" style="width: 250px;">
                         <option value="">(None)</option>
                     </select>
@@ -163,6 +165,9 @@
                 <div style="margin-top: 15px;">
                     <button onclick="savePolicy();">Save</button>
                     <button onclick="cancelEdit();">Cancel</button>
+                    <button onclick="testNotification();" id="btnTestNotify"
+                        style="margin-left:20px; background:#47a; color:#fff; border:1px solid #7af;">Test Alert
+                        Email</button>
                 </div>
             </div>
         </div>
@@ -173,8 +178,9 @@
                 <div class="form-row">
                     <label>Target Type:</label>
                     <select id="aTargetType" onchange="updateTargetList();">
-                        <option value="node">Single Node</option>
+                        <option value="node">Individual Computer</option>
                         <option value="mesh">Device Group (Mesh)</option>
+                        <option value="tag">Device Tag</option>
                     </select>
                 </div>
                 <div class="form-row">
@@ -367,6 +373,11 @@
             document.getElementById('colAssign').classList.add('hidden');
         }
 
+        function testNotification() {
+            window.opener.parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'testComplianceNotify' });
+            alert("A test notification command has been sent to the MeshCentral server. If email is configured, it should arrive shortly.");
+        }
+
         function updateTargetList() {
             var type = document.getElementById('aTargetType').value;
             var sel = document.getElementById('aTargetId');
@@ -381,6 +392,15 @@
                 var meshes = window.opener.parent.meshes || {};
                 for (var key in meshes) {
                     if (meshes[key].mtype === 2) sel.options.add(new Option(meshes[key].name, key));
+                }
+            } else if (type === 'tag') {
+                sel.options.add(new Option("Please enter the precise Tag string here ->", ""));
+                // Meshcentral tags are stored differently, usually we rely on the backend to parse them
+                // We will just let the user type out the tag name manually, or prompt them:
+                var tagName = prompt("Enter the exact name of the Device Tag to assign this policy to:");
+                if (tagName) {
+                    sel.options.add(new Option("Tag: " + tagName, tagName));
+                    sel.value = tagName;
                 }
             }
         }

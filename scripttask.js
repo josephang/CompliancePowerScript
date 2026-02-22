@@ -1193,23 +1193,44 @@ module.exports.scripttask = function (parent) {
                 break;
             case 'getPowerHistory':
                 if (obj.meshServer && obj.meshServer.db && typeof obj.meshServer.db.GetEvents == 'function') {
-                    // Query power events for the node.
-                    // Action 10 = power events (in MeshCentral core).
                     var nodeid = command.nodeId;
                     var limit = 5000;
-                    var timeLimitMs = Date.now() - (command.days || 180) * 86400 * 1000;
+                    var retentionDays = command.days || 180;
+                    var timeLimitMs = Date.now() - retentionDays * 86400 * 1000;
                     var domainId = (myparent && myparent.domain) ? myparent.domain.id : '';
+
+                    // MeshCentral power state labels (action='pwr', state field)
+                    var powerStateLabels = { 0: 'Powered Off', 1: 'Powered On', 2: 'Sleeping', 3: 'Hibernating', 4: 'Soft-Off', 5: 'Unknown' };
 
                     obj.meshServer.db.GetEvents([nodeid], domainId, limit, function (err, docs) {
                         var pEvents = [];
                         if (!err && docs) {
                             docs.forEach(function (ev) {
-                                var evTimeMs = typeof ev.time === 'number' ? ev.time : (new Date(ev.time).getTime() || 0);
-                                if (evTimeMs < timeLimitMs) return;
+                                // Only include power-state events
+                                var isPowerEvent = (ev.action === 'pwr' || ev.action === 'power' || ev.state !== undefined || ev.s !== undefined);
+                                if (!isPowerEvent) return;
 
-                                // Sending all events for debugging
-                                pEvents.push({ time: ev.time, msg: ev.msg, action: ev.action, state: ev.state || ev.s, raw: ev });
+                                // Normalise timestamp to Unix SECONDS regardless of MeshCentral format
+                                var rawTime = ev.time;
+                                var tMs = 0;
+                                if (rawTime instanceof Date) tMs = rawTime.getTime();
+                                else if (typeof rawTime === 'string') tMs = new Date(rawTime).getTime();
+                                else if (typeof rawTime === 'number') tMs = rawTime > 1e10 ? rawTime : rawTime * 1000;
+                                if (!tMs || isNaN(tMs)) return;
+                                if (tMs < timeLimitMs) return;
+
+                                var stateNum = (ev.state !== undefined ? ev.state : (ev.s !== undefined ? ev.s : -1));
+                                var stateLabel = powerStateLabels[stateNum] || (ev.msg || 'Power Event');
+
+                                pEvents.push({
+                                    time: Math.floor(tMs / 1000), // Unix seconds for fmtTs()
+                                    state: stateNum,
+                                    stateLabel: stateLabel,
+                                    msg: ev.msg || null
+                                });
                             });
+                            // Sort ascending for timeline rendering
+                            pEvents.sort(function (a, b) { return a.time - b.time; });
                         }
                         var targets = ['*', 'server-users'];
                         obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'powerHistory', events: pEvents, nodeId: nodeid });

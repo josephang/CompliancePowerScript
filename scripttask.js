@@ -61,11 +61,9 @@ module.exports.scripttask = function (parent) {
             obj.meshServer.AddEventDispatch(['*'], obj.meshServer);
             obj.meshServer.on('DispatchEvent', function (targets, source, event) {
                 if (!event || !event.nodeid) return;
-                // nodeConnect fires when device connects/disconnects from the server
-                // nodeState fires on specific power state/sleep changes
-                if (event.action === 'nodeConnect' || event.action === 'nodeState') {
-                    // Slight delay to allow MeshCentral DB to update node.pwr state
-                    setTimeout(function () {
+                // nodeconnect fires when device connects/disconnects from the server or changes power state
+                if (event.action === 'nodeconnect' || event.action === 'changenode') {
+                    if (event.action === 'nodeconnect' && event.pwr !== undefined) {
                         try {
                             // Find the node's mesh domain
                             var domains = obj.meshServer.domains || {};
@@ -74,16 +72,39 @@ module.exports.scripttask = function (parent) {
                                 if (domain.meshes) {
                                     for (var mid in domain.meshes) {
                                         if (event.nodeid.startsWith('node//' + mid.split('//')[1])) {
-                                            obj.checkAndAlertPowerStateChange(event.nodeid, mid, null);
+                                            obj.checkAndAlertPowerStateChange(event.nodeid, mid, null, event.pwr);
+                                            obj.recordNodeInfoIfChanged(event.nodeid, mid);
                                             return;
                                         }
                                     }
                                 }
                             }
                         } catch (e) {
-                            console.log('ScriptPolicyCompliance: Event dispatcher power check error', e);
+                            console.log('ScriptPolicyCompliance: Event dispatcher immediate tracking error', e);
                         }
-                    }, 2000);
+                    } else {
+                        // Slight delay to allow MeshCentral DB to update node
+                        setTimeout(function () {
+                            try {
+                                // Find the node's mesh domain
+                                var domains = obj.meshServer.domains || {};
+                                for (var domainId in domains) {
+                                    var domain = domains[domainId];
+                                    if (domain.meshes) {
+                                        for (var mid in domain.meshes) {
+                                            if (event.nodeid.startsWith('node//' + mid.split('//')[1])) {
+                                                obj.checkAndAlertPowerStateChange(event.nodeid, mid, null);
+                                                obj.recordNodeInfoIfChanged(event.nodeid, mid);
+                                                return;
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                console.log('ScriptPolicyCompliance: Event dispatcher tracking error', e);
+                            }
+                        }, 5000); // 5 sec delay as OS info updates can take a moment after connection
+                    }
                 }
             });
 
@@ -111,6 +132,17 @@ module.exports.scripttask = function (parent) {
         if (!obj.db || !agent || !agent.dbNodeKey) return;
         var nodeId = agent.dbNodeKey;
         var meshId = agent.dbMeshKey || null;
+
+        // Catch instantaneous boot time from agent coreinfo messages
+        if (command && command.action === 'coreinfo' && command.coreinfo && command.coreinfo.osinfo && command.coreinfo.osinfo.LastBootUpTime) {
+            var bootTime = command.coreinfo.osinfo.LastBootUpTime;
+            obj.db.getLastDeviceEvent(nodeId, 'bootTime').then(lastBoot => {
+                if (!lastBoot.length || lastBoot[0].data.bootTime !== bootTime) {
+                    obj.db.addDeviceEvent(nodeId, meshId, 'bootTime', { bootTime: bootTime });
+                }
+            }).catch(() => { });
+        }
+
         var user = null;
         if (command) {
             if (command.loginuser) user = command.loginuser;
@@ -162,25 +194,39 @@ module.exports.scripttask = function (parent) {
         3: 'Hibernating', 4: 'Soft-Off', 5: 'Unknown / Connected'
     };
 
-    obj.checkAndAlertPowerStateChange = async function (nodeId, meshId, agent) {
+    obj.checkAndAlertPowerStateChange = async function (nodeId, meshId, agent, immediatePowerState) {
         if (!obj.db) return;
-        // Check alert config
-        var cfgRows = await obj.db.getPowerAlertConfig(nodeId);
-        var cfg = cfgRows && cfgRows.length ? cfgRows[0] : null;
-        if (!cfg || !cfg.alertOnStateChange) return;
 
-        // Read current power state from MeshCentral node record
-        var nodes = await new Promise(function (resolve, reject) {
-            obj.meshServer.db.Get(nodeId, function (err, docs) {
-                if (err) reject(err); else resolve(docs || []);
+        var currentState = immediatePowerState;
+        var nodeName = nodeId.slice(-8);
+
+        if (currentState === undefined || currentState === null) {
+            // Read current power state from MeshCentral node record
+            var nodes = await new Promise(function (resolve, reject) {
+                obj.meshServer.db.Get(nodeId, function (err, docs) {
+                    if (err) reject(err); else resolve(docs || []);
+                });
             });
-        });
-        if (!nodes.length) return;
-        var node = nodes[0];
-        // MeshCentral stores power state as node.pwr or node.powerState (numeric)
-        var currentState = (node.pwr !== undefined ? node.pwr :
-            (node.powerState !== undefined ? node.powerState : null));
-        if (currentState === null || currentState === undefined) return;
+            if (!nodes.length) return;
+            var node = nodes[0];
+            // MeshCentral stores power state as node.pwr or node.powerState (numeric)
+            currentState = (node.pwr !== undefined ? node.pwr :
+                (node.powerState !== undefined ? node.powerState : null));
+            if (currentState === null || currentState === undefined) return;
+            nodeName = node.name || nodeName;
+        } else {
+            // Try to find the node name silently for alert email
+            try {
+                var nodes = await new Promise(function (resolve, reject) {
+                    obj.meshServer.db.Get(nodeId, function (err, docs) {
+                        if (err) reject(err); else resolve(docs || []);
+                    });
+                });
+                if (nodes.length && nodes[0].name) {
+                    nodeName = nodes[0].name;
+                }
+            } catch (e) { }
+        }
 
         // Compare with last stored powerState event
         var lastEvts = await obj.db.getLastDeviceEvent(nodeId, 'powerState');
@@ -191,8 +237,12 @@ module.exports.scripttask = function (parent) {
         // State changed — record it
         await obj.db.addDeviceEvent(nodeId, meshId, 'powerState', { state: currentState });
 
+        // Check alert config
+        var cfgRows = await obj.db.getPowerAlertConfig(nodeId);
+        var cfg = cfgRows && cfgRows.length ? cfgRows[0] : null;
+        if (!cfg || !cfg.alertOnStateChange) return;
+
         // Send alert email
-        var nodeName = node.name || nodeId.slice(-8);
         var fromLabel = lastState !== null ? (_powerStateLabels[lastState] || 'State ' + lastState) : 'Unknown';
         var toLabel = _powerStateLabels[currentState] || 'State ' + currentState;
         var ts = new Date().toLocaleString();

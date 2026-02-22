@@ -1403,7 +1403,10 @@ module.exports.scripttask = function (parent) {
                     function buildEvents(docs, isNativePwr) {
                         var pEvents = [];
                         (docs || []).forEach(function (rawEv) {
-                            var ev = (rawEv.doc !== undefined) ? (typeof rawEv.doc === 'string' ? JSON.parse(rawEv.doc) : rawEv.doc) : rawEv;
+                            var ev = rawEv;
+                            if (rawEv && rawEv.doc) {
+                                ev = (typeof rawEv.doc === 'string') ? JSON.parse(rawEv.doc) : rawEv.doc;
+                            }
                             if (!isNativePwr) {
                                 var ok = (ev.action === 'pwr' || ev.action === 'power' ||
                                     ev.state !== undefined || ev.s !== undefined ||
@@ -1448,10 +1451,13 @@ module.exports.scripttask = function (parent) {
                     if (typeof db.GetPowerTimeline === 'function') {
                         db.GetPowerTimeline(nodeid, function (err, docs) {
                             if (err || !docs || !docs.length) {
-                                // Fall through to GetEvents
+                                console.log("ScriptPolicyCompliance: GetPowerTimeline returned empty array or error for " + nodeid);
                                 tryGetEvents();
                             } else {
-                                dispatch(buildEvents(docs, true));
+                                console.log("ScriptPolicyCompliance: GetPowerTimeline retrieved " + docs.length + " events. Raw [0] is: ", typeof docs[0], docs[0]);
+                                var eventsArr = buildEvents(docs, true);
+                                console.log("ScriptPolicyCompliance: buildEvents(docs, true) resolved length: " + eventsArr.length);
+                                dispatch(eventsArr);
                             }
                         });
                     } else {

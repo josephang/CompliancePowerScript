@@ -57,6 +57,35 @@ module.exports.scripttask = function (parent) {
             obj.enforceDeviceEventRetention();
             obj.retentionTimer = setInterval(obj.enforceDeviceEventRetention, 6 * 60 * 60 * 1000);
 
+            // Listen for node disconnections and power state changes to update Power History
+            obj.meshServer.AddEventDispatch(['*'], obj.meshServer);
+            obj.meshServer.on('DispatchEvent', function (targets, source, event) {
+                if (!event || !event.nodeid) return;
+                // nodeConnect fires when device connects/disconnects from the server
+                // nodeState fires on specific power state/sleep changes
+                if (event.action === 'nodeConnect' || event.action === 'nodeState') {
+                    // Slight delay to allow MeshCentral DB to update node.pwr state
+                    setTimeout(function () {
+                        try {
+                            // Find the node's mesh domain
+                            var domains = obj.meshServer.domains || {};
+                            for (var domainId in domains) {
+                                var domain = domains[domainId];
+                                if (domain.meshes) {
+                                    for (var mid in domain.meshes) {
+                                        if (event.nodeid.startsWith('node//' + mid.split('//')[1])) {
+                                            obj.checkAndAlertPowerStateChange(event.nodeid, mid, null);
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.log('ScriptPolicyCompliance: Event dispatcher power check error', e);
+                        }
+                    }, 2000);
+                }
+            });
 
 
             console.log("CompliancePowerScript: DB Successfully Initialized!");

@@ -1,7 +1,7 @@
 {
-  "name": "CompliancePowerScript",
+  "name": "ScriptPolicyCompliance",
   "shortName": "scripttask",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "author": "Joseph Ang & Ryan Blenis",
   "description": "Compliance Engine & Script Runner with GPO-style policies for endpoints",
   "hasAdminPanel": false,

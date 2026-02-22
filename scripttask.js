@@ -62,7 +62,7 @@ module.exports.scripttask = function (parent) {
         if (typeof agent === 'object' && agent.dbNodeKey) {
             obj.evaluateDeviceCompliance(agent.dbNodeKey);
             obj.recordComplianceEvents(agent).catch(e => {
-                console.log('CompliancePowerScript: recordComplianceEvents error', e);
+                console.log('ScriptPolicyCompliance: recordComplianceEvents error', e);
             });
         }
     };
@@ -72,26 +72,22 @@ module.exports.scripttask = function (parent) {
         var nodeId = agent.dbNodeKey;
         var meshId = agent.dbMeshKey || null;
 
-        // Extract public IP from remoteaddrport (format: "1.2.3.4:port" or "::ffff:1.2.3.4:port")
+        // Extract public IP (format: "1.2.3.4:port" or "::ffff:1.2.3.4:port")
         var rawAddr = agent.remoteaddrport || '';
         var ip = rawAddr.replace(/^::ffff:/, '').replace(/:\d+$/, '') || 'unknown';
 
-        // Record connection event (always)
-        await obj.db.addDeviceEvent(nodeId, meshId, 'agentConnected', { ip: ip });
-
-        // Record IP only if changed since last seen
+        // Record IP only if changed
         var lastIp = await obj.db.getLastDeviceEvent(nodeId, 'ipSeen');
         if (!lastIp.length || lastIp[0].data.ip !== ip) {
             await obj.db.addDeviceEvent(nodeId, meshId, 'ipSeen', { ip: ip });
         }
 
-        // Record boot time if changed
-        await obj.recordBootTimeIfChanged(nodeId, meshId);
+        // Record boot time and last user from node record
+        await obj.recordNodeInfoIfChanged(nodeId, meshId);
     };
 
-    obj.recordBootTimeIfChanged = async function (nodeId, meshId) {
+    obj.recordNodeInfoIfChanged = async function (nodeId, meshId) {
         try {
-            // MeshCentral stores node info in the DB; access via GetNode
             var nodes = await new Promise((resolve, reject) => {
                 obj.meshServer.db.Get(nodeId, (err, docs) => {
                     if (err) reject(err); else resolve(docs);
@@ -99,21 +95,90 @@ module.exports.scripttask = function (parent) {
             });
             if (!nodes || !nodes.length) return;
             var node = nodes[0];
-            // Boot time lives in osinforaw or osDesc depending on agent version
+
+            // --- Boot Time: check all known MeshCentral field paths ---
             var bootTime = null;
             if (node.osinforaw && node.osinforaw.LastBootUpTime) {
                 bootTime = node.osinforaw.LastBootUpTime;
+            } else if (node.osinfo && node.osinfo.LastBootUpTime) {
+                bootTime = node.osinfo.LastBootUpTime;
             } else if (node.osinfo && node.osinfo.lastBootUpTime) {
                 bootTime = node.osinfo.lastBootUpTime;
+            } else if (node.lastboottime) {
+                bootTime = node.lastboottime;
+            } else if (node.LastBootUpTime) {
+                bootTime = node.LastBootUpTime;
+            } else if (node.systeminformation && node.systeminformation.BootupTimestamp) {
+                bootTime = node.systeminformation.BootupTimestamp;
             }
-            if (!bootTime) return;
 
-            var lastBoot = await obj.db.getLastDeviceEvent(nodeId, 'bootTime');
-            if (!lastBoot.length || lastBoot[0].data.bootTime !== bootTime) {
-                await obj.db.addDeviceEvent(nodeId, meshId, 'bootTime', { bootTime: bootTime });
+            // Debug: log available fields once if we still can't find boot time
+            if (!bootTime) {
+                var topKeys = Object.keys(node).filter(k => !['_id', 'type'].includes(k));
+                console.log('ScriptPolicyCompliance: Boot time not found for node', nodeId, '— available top-level keys:', topKeys.join(', '));
+                // Try to find any field with "boot" in it
+                for (var k of topKeys) {
+                    if (k.toLowerCase().includes('boot')) {
+                        console.log('ScriptPolicyCompliance: Found boot-related field:', k, '=', JSON.stringify(node[k]));
+                        bootTime = String(node[k]);
+                        break;
+                    }
+                    if (typeof node[k] === 'object' && node[k] !== null) {
+                        var subKeys = Object.keys(node[k]);
+                        for (var sk of subKeys) {
+                            if (sk.toLowerCase().includes('boot')) {
+                                console.log('ScriptPolicyCompliance: Found boot-related sub-field:', k + '.' + sk, '=', JSON.stringify(node[k][sk]));
+                                bootTime = String(node[k][sk]);
+                                break;
+                            }
+                        }
+                        if (bootTime) break;
+                    }
+                }
+            }
+
+            if (bootTime) {
+                var lastBoot = await obj.db.getLastDeviceEvent(nodeId, 'bootTime');
+                if (!lastBoot.length || lastBoot[0].data.bootTime !== bootTime) {
+                    await obj.db.addDeviceEvent(nodeId, meshId, 'bootTime', { bootTime: bootTime });
+                }
+            }
+
+            // --- Last Logged-In User: check known field paths ---
+            var lastUser = null;
+            if (node.loginuser) {
+                lastUser = node.loginuser;
+            } else if (node.login && node.login.user) {
+                lastUser = node.login.user;
+            } else if (node.winuser) {
+                lastUser = node.winuser;
+            } else if (node.rdplogin) {
+                lastUser = node.rdplogin;
+            } else if (node.lauser) {
+                lastUser = node.lauser;
+            } else if (node.loggeduser) {
+                lastUser = node.loggeduser;
+            }
+
+            // Debug: log user-related fields if not found
+            if (!lastUser) {
+                var topKeys2 = Object.keys(node);
+                for (var k2 of topKeys2) {
+                    if (k2.toLowerCase().includes('user') || k2.toLowerCase().includes('login') || k2.toLowerCase().includes('logon')) {
+                        console.log('ScriptPolicyCompliance: Found user-related field:', k2, '=', JSON.stringify(node[k2]));
+                        if (typeof node[k2] === 'string' && node[k2]) { lastUser = node[k2]; break; }
+                    }
+                }
+            }
+
+            if (lastUser) {
+                var lastUserRec = await obj.db.getLastDeviceEvent(nodeId, 'lastUser');
+                if (!lastUserRec.length || lastUserRec[0].data.user !== lastUser) {
+                    await obj.db.addDeviceEvent(nodeId, meshId, 'lastUser', { user: lastUser });
+                }
             }
         } catch (e) {
-            // Node may not be fetchable, skip silently
+            console.log('ScriptPolicyCompliance: recordNodeInfoIfChanged error:', e.message);
         }
     };
 
@@ -964,11 +1029,11 @@ module.exports.scripttask = function (parent) {
                 if (command.policy._id) {
                     obj.db.updatePolicy(command.policy._id, command.policy).then(() => {
                         obj.serveraction({ pluginaction: 'getPolicies' }, myparent, grandparent);
-                    }).catch(err => console.log('CompliancePowerScript ERROR updating policy:', err));
+                    }).catch(err => console.log('ScriptPolicyCompliance ERROR updating policy:', err));
                 } else {
                     obj.db.addPolicy(command.policy).then(() => {
                         obj.serveraction({ pluginaction: 'getPolicies' }, myparent, grandparent);
-                    }).catch(err => console.log('CompliancePowerScript ERROR adding policy:', err));
+                    }).catch(err => console.log('ScriptPolicyCompliance ERROR adding policy:', err));
                 }
                 break;
             case 'deletePolicy':
@@ -1025,43 +1090,44 @@ module.exports.scripttask = function (parent) {
                 obj.db.getDeviceEvents(command.nodeId).then(events => {
                     var targets = ['*', 'server-users'];
                     obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'deviceEvents', nodeId: command.nodeId, events: events });
-                }).catch(e => { console.log('CompliancePowerScript ERROR getDeviceEvents:', e); });
+                }).catch(e => { console.log('ScriptPolicyCompliance ERROR getDeviceEvents:', e); });
                 break;
             case 'getComplianceOverview':
                 obj.db.getAllDeviceEventNodes().then(allEvents => {
-                    // Aggregate: for each nodeId, latest of each event type
+                    // Aggregate: for each nodeId, latest of each event type (data sorted desc, first = latest)
                     var nodeMap = {};
                     allEvents.forEach(ev => {
                         if (!nodeMap[ev.nodeId]) nodeMap[ev.nodeId] = {};
-                        if (!nodeMap[ev.nodeId][ev.eventType]) nodeMap[ev.nodeId][ev.eventType] = ev; // sorted desc so first = latest
+                        if (!nodeMap[ev.nodeId][ev.eventType]) nodeMap[ev.nodeId][ev.eventType] = ev;
                     });
                     var overview = Object.keys(nodeMap).map(nodeId => ({
                         nodeId: nodeId,
                         lastIp: nodeMap[nodeId].ipSeen ? nodeMap[nodeId].ipSeen.data.ip : null,
                         lastIpTimestamp: nodeMap[nodeId].ipSeen ? nodeMap[nodeId].ipSeen.timestamp : null,
-                        lastConnected: nodeMap[nodeId].agentConnected ? nodeMap[nodeId].agentConnected.timestamp : null,
+                        lastUser: nodeMap[nodeId].lastUser ? nodeMap[nodeId].lastUser.data.user : null,
+                        lastUserTimestamp: nodeMap[nodeId].lastUser ? nodeMap[nodeId].lastUser.timestamp : null,
                         lastBoot: nodeMap[nodeId].bootTime ? nodeMap[nodeId].bootTime.data.bootTime : null,
                         lastBootTimestamp: nodeMap[nodeId].bootTime ? nodeMap[nodeId].bootTime.timestamp : null
                     }));
                     var targets = ['*', 'server-users'];
                     obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'complianceOverview', overview: overview });
-                }).catch(e => { console.log('CompliancePowerScript ERROR getComplianceOverview:', e); });
+                }).catch(e => { console.log('ScriptPolicyCompliance ERROR getComplianceOverview:', e); });
                 break;
             case 'getRetentionRules':
                 obj.db.getRetentionRules().then(rules => {
                     var targets = ['*', 'server-users'];
                     obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'retentionRules', rules: rules });
-                }).catch(e => { console.log('CompliancePowerScript ERROR getRetentionRules:', e); });
+                }).catch(e => { console.log('ScriptPolicyCompliance ERROR getRetentionRules:', e); });
                 break;
             case 'saveRetentionRule':
                 obj.db.saveRetentionRule(command.rule).then(() => {
                     obj.serveraction({ pluginaction: 'getRetentionRules' }, myparent, grandparent);
-                }).catch(e => { console.log('CompliancePowerScript ERROR saveRetentionRule:', e); });
+                }).catch(e => { console.log('ScriptPolicyCompliance ERROR saveRetentionRule:', e); });
                 break;
             case 'deleteRetentionRule':
                 obj.db.deleteRetentionRule(command.id).then(() => {
                     obj.serveraction({ pluginaction: 'getRetentionRules' }, myparent, grandparent);
-                }).catch(e => { console.log('CompliancePowerScript ERROR deleteRetentionRule:', e); });
+                }).catch(e => { console.log('ScriptPolicyCompliance ERROR deleteRetentionRule:', e); });
                 break;
             default:
                 console.log('PLUGIN: ScriptTask: unknown action');
@@ -1126,9 +1192,9 @@ module.exports.scripttask = function (parent) {
 
         transporter.sendMail(mailOptions, function (error, info) {
             if (error) {
-                console.log('CompliancePowerScript Mail Error:', error);
+                console.log('ScriptPolicyCompliance Mail Error:', error);
             } else {
-                console.log('CompliancePowerScript Mail Sent:', info.response);
+                console.log('ScriptPolicyCompliance Mail Sent:', info.response);
             }
         });
     };

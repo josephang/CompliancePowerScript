@@ -530,6 +530,10 @@
               <label>Notify on Failure:</label>
               <input type="checkbox" id="pNotify" checked />
             </div>
+            <div class="form-row">
+              <label>Notify on Success:</label>
+              <input type="checkbox" id="pNotifySuccess" />
+            </div>
             <div style="margin-top: 15px;">
               <button onclick="savePolicy();">Save</button>
               <button onclick="cancelEdit();">Cancel</button>
@@ -645,14 +649,19 @@
       <!-- Overview Panel -->
       <div id="cev-overview">
         <h2>Compliance <span style="font-size:14px;font-weight:normal;color:#888;">— Device Overview</span></h2>
+        <div style="margin-bottom:8px; display:flex; gap:10px; align-items:center;">
+          <input type="text" id="cev-search" placeholder="Search by device or user..."
+            oninput="filterComplianceOverview()"
+            style="padding:5px 8px; border:1px solid #ccc; border-radius:3px; width:240px; font-size:13px;">
+        </div>
         <div class="cev-panel">
           <table id="cev-overview-tbl">
             <thead>
               <tr>
-                <th>Device</th>
+                <th onclick="sortComplianceOverview('name')" style="cursor:pointer;">Device &#9650;</th>
                 <th>Last IP <span style="font-size:11px;font-weight:normal;">(timestamp)</span></th>
                 <th>Last Boot Time</th>
-                <th>Last Connected</th>
+                <th onclick="sortComplianceOverview('user')" style="cursor:pointer;">Last User &#9650;</th>
                 <th></th>
               </tr>
             </thead>
@@ -685,9 +694,9 @@
                       style="background:#007bff;color:#fff;">Save</button></td>
                 </tr>
                 <tr>
-                  <td>Connection Events</td>
-                  <td><input type="number" id="ret-conn-days" min="1" value="90" style="width:70px;"></td>
-                  <td><button onclick="saveDefaultRetention('agentConnected')"
+                  <td>Last User</td>
+                  <td><input type="number" id="ret-user-days" min="1" value="90" style="width:70px;"></td>
+                  <td><button onclick="saveDefaultRetention('lastUser')"
                       style="background:#007bff;color:#fff;">Save</button></td>
                 </tr>
                 <tr>
@@ -736,16 +745,15 @@
             </thead>
             <tbody id="cev-ip-tbl"></tbody>
           </table>
-          <div class="cev-section-title" style="margin-top:14px;">&#128279; Connection Events</div>
+          <div class="cev-section-title" style="margin-top:14px;">&#128100; Last User History</div>
           <table>
             <thead>
               <tr>
                 <th>Timestamp</th>
-                <th>Event</th>
-                <th>IP at Connect</th>
+                <th>Username</th>
               </tr>
             </thead>
-            <tbody id="cev-conn-tbl"></tbody>
+            <tbody id="cev-user-tbl"></tbody>
           </table>
           <div class="cev-section-title" style="margin-top:14px;">&#9654; Boot Time History</div>
           <table>
@@ -906,6 +914,7 @@
         document.getElementById('pRemediate').value = p.remediateScriptId || '';
         document.getElementById('pCooldown').value = p.cooldownMinutes || 60;
         document.getElementById('pNotify').checked = p.notifyOnFail;
+        document.getElementById('pNotifySuccess').checked = !!p.notifyOnSuccess;
       } else {
         document.getElementById('editTitle').innerText = 'Create New Policy';
         document.getElementById('pId').value = '';
@@ -915,6 +924,7 @@
         document.getElementById('pRemediate').value = '';
         document.getElementById('pCooldown').value = 60;
         document.getElementById('pNotify').checked = true;
+        document.getElementById('pNotifySuccess').checked = false;
       }
     }
 
@@ -933,7 +943,8 @@
         detectScriptId: document.getElementById('pDetect').value,
         remediateScriptId: document.getElementById('pRemediate').value,
         cooldownMinutes: parseInt(document.getElementById('pCooldown').value) || 60,
-        notifyOnFail: document.getElementById('pNotify').checked
+        notifyOnFail: document.getElementById('pNotify').checked,
+        notifyOnSuccess: document.getElementById('pNotifySuccess').checked
       };
       var id = document.getElementById('pId').value;
       if (id) p._id = id;
@@ -1397,46 +1408,80 @@
       return new Date(ts * 1000).toLocaleString();
     }
 
-    parent.pluginHandler.scripttask.complianceOverview = function (message) {
-      var overview = message.event.overview || [];
+    var complianceOverviewData = [];
+    var complianceSortKey = 'name';
+    var complianceSortAsc = true;
+
+    function renderComplianceOverview(rows) {
       var tbody = document.getElementById('cev-overview-body');
       if (!tbody) return;
-      if (!overview.length) {
+      if (!rows.length) {
         tbody.innerHTML = '<tr><td colspan="5" style="color:#999;font-style:italic;">No compliance data yet. Data is collected when agents connect.</td></tr>';
         return;
       }
       var html = '';
-      overview.forEach(function (row) {
+      rows.forEach(function (row) {
         var name = getNodeName(row.nodeId);
-        html += '<tr>';
+        html += '<tr data-name="' + name.toLowerCase() + '" data-user="' + (row.lastUser || '').toLowerCase() + '">';
         html += '<td>' + name + '</td>';
         html += '<td>' + (row.lastIp || '-') + '<br><span style="color:#999;font-size:11px;">' + fmtTs(row.lastIpTimestamp) + '</span></td>';
         html += '<td>' + (row.lastBoot ? row.lastBoot : '-') + '</td>';
-        html += '<td>' + fmtTs(row.lastConnected) + '</td>';
+        html += '<td>' + (row.lastUser || '-') + '</td>';
         html += '<td><span class="flink" onclick="loadDeviceDetail(\'' + row.nodeId + '\', \'' + name.replace(/'/g, "\\'") + '\')">Details &rsaquo;</span></td>';
         html += '</tr>';
       });
       tbody.innerHTML = html;
+    }
+
+    parent.pluginHandler.scripttask.complianceOverview = function (message) {
+      complianceOverviewData = message.event.overview || [];
+      complianceOverviewData.sort(function (a, b) {
+        var av = getNodeName(a.nodeId).toLowerCase(), bv = getNodeName(b.nodeId).toLowerCase();
+        return av < bv ? -1 : av > bv ? 1 : 0;
+      });
+      renderComplianceOverview(complianceOverviewData);
     };
+
+    function filterComplianceOverview() {
+      var q = document.getElementById('cev-search').value.toLowerCase();
+      var rows = document.querySelectorAll('#cev-overview-body tr');
+      rows.forEach(function (r) {
+        var name = (r.getAttribute('data-name') || '');
+        var user = (r.getAttribute('data-user') || '');
+        r.style.display = (!q || name.includes(q) || user.includes(q)) ? '' : 'none';
+      });
+    }
+
+    function sortComplianceOverview(key) {
+      if (complianceSortKey === key) complianceSortAsc = !complianceSortAsc;
+      else { complianceSortKey = key; complianceSortAsc = true; }
+      complianceOverviewData.sort(function (a, b) {
+        var av = (key === 'user' ? (a.lastUser || '') : getNodeName(a.nodeId)).toLowerCase();
+        var bv = (key === 'user' ? (b.lastUser || '') : getNodeName(b.nodeId)).toLowerCase();
+        var cmp = av < bv ? -1 : av > bv ? 1 : 0;
+        return complianceSortAsc ? cmp : -cmp;
+      });
+      renderComplianceOverview(complianceOverviewData);
+    }
 
     parent.pluginHandler.scripttask.deviceEvents = function (message) {
       var events = message.event.events || [];
       var ipTbl = document.getElementById('cev-ip-tbl');
-      var connTbl = document.getElementById('cev-conn-tbl');
+      var userTbl = document.getElementById('cev-user-tbl');
       var bootTbl = document.getElementById('cev-boot-tbl');
       if (!ipTbl) return;
-      var ipHtml = '', connHtml = '', bootHtml = '';
+      var ipHtml = '', userHtml = '', bootHtml = '';
       events.forEach(function (ev) {
         if (ev.eventType === 'ipSeen') {
           ipHtml += '<tr><td>' + fmtTs(ev.timestamp) + '</td><td>' + (ev.data.ip || '-') + '</td></tr>';
-        } else if (ev.eventType === 'agentConnected') {
-          connHtml += '<tr><td>' + fmtTs(ev.timestamp) + '</td><td>Connected</td><td>' + (ev.data.ip || '-') + '</td></tr>';
+        } else if (ev.eventType === 'lastUser') {
+          userHtml += '<tr><td>' + fmtTs(ev.timestamp) + '</td><td>' + (ev.data.user || '-') + '</td></tr>';
         } else if (ev.eventType === 'bootTime') {
           bootHtml += '<tr><td>' + fmtTs(ev.timestamp) + '</td><td>' + (ev.data.bootTime || '-') + '</td></tr>';
         }
       });
       ipTbl.innerHTML = ipHtml || '<tr><td colspan="2" style="color:#999;">No records</td></tr>';
-      connTbl.innerHTML = connHtml || '<tr><td colspan="3" style="color:#999;">No records</td></tr>';
+      if (userTbl) userTbl.innerHTML = userHtml || '<tr><td colspan="2" style="color:#999;">No records</td></tr>';
       bootTbl.innerHTML = bootHtml || '<tr><td colspan="2" style="color:#999;">No records</td></tr>';
     };
 
@@ -1445,7 +1490,8 @@
       document.getElementById('cev-detail').style.display = 'block';
       document.getElementById('cev-detail-name').textContent = name;
       document.getElementById('cev-ip-tbl').innerHTML = '<tr><td colspan="2" style="color:#999;">Loading...</td></tr>';
-      document.getElementById('cev-conn-tbl').innerHTML = '<tr><td colspan="3" style="color:#999;">Loading...</td></tr>';
+      var ut = document.getElementById('cev-user-tbl');
+      if (ut) ut.innerHTML = '<tr><td colspan="2" style="color:#999;">Loading...</td></tr>';
       document.getElementById('cev-boot-tbl').innerHTML = '<tr><td colspan="2" style="color:#999;">Loading...</td></tr>';
       parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getDeviceEvents', nodeId: nodeId });
       resizeIframe();
@@ -1456,7 +1502,7 @@
     parent.pluginHandler.scripttask.retentionRules = function (message) {
       retentionRulesCache = message.event.rules || [];
       // Populate default inputs
-      var typeToInputId = { ipSeen: 'ret-ip-days', agentConnected: 'ret-conn-days', bootTime: 'ret-boot-days' };
+      var typeToInputId = { ipSeen: 'ret-ip-days', lastUser: 'ret-user-days', bootTime: 'ret-boot-days' };
       retentionRulesCache.forEach(function (r) {
         if (r.targetType === 'global' && typeToInputId[r.eventType]) {
           var inp = document.getElementById(typeToInputId[r.eventType]);

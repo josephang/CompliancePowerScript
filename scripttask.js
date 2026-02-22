@@ -128,14 +128,14 @@ module.exports.scripttask = function (parent) {
     };
 
     // Capture lastUser from real-time agent data messages
-    obj.hook_processAgentData = function (agent, command, tag) {
+    obj.hook_processAgentData = function (command, agent, tag) {
         if (!obj.db || !agent || !agent.dbNodeKey) return;
         var nodeId = agent.dbNodeKey;
         var meshId = agent.dbMeshKey || null;
 
         // Catch instantaneous boot time from agent coreinfo messages
-        if (command && command.action === 'coreinfo' && command.coreinfo && command.coreinfo.osinfo && command.coreinfo.osinfo.LastBootUpTime) {
-            var bootTime = command.coreinfo.osinfo.LastBootUpTime;
+        if (command && command.action === 'coreinfo' && command.lastbootuptime != null) {
+            var bootTime = String(command.lastbootuptime);
             obj.db.getLastDeviceEvent(nodeId, 'bootTime').then(lastBoot => {
                 if (!lastBoot.length || lastBoot[0].data.bootTime !== bootTime) {
                     obj.db.addDeviceEvent(nodeId, meshId, 'bootTime', { bootTime: bootTime });

@@ -1905,7 +1905,9 @@
         var dayEvts = _pwrEvents.filter(function (e) { var tMs = e.time * 1000; return tMs >= dStartMs && tMs < dEndMs; });
         var priorEvts = _pwrEvents.filter(function (e) { return e.time * 1000 < dStartMs; });
 
-        var curState = priorEvts.length > 0 ? priorEvts[priorEvts.length - 1].state : (isCurrentlyOnline ? 1 : 0);
+        // Default to 'Unknown' (state 5) if no prior events exist and no subsequent events guarantee it was on
+        var curState = priorEvts.length > 0 ? priorEvts[priorEvts.length - 1].state : 5;
+
         var barHtml = '';
         var lastMs = dStartMs;
 
@@ -1913,13 +1915,17 @@
           var ev = dayEvts[i];
           var etMs = ev.time * 1000;
           var pct = ((etMs - lastMs) / 86400000) * 100;
-          if (pct > 0.05) barHtml += '<div style="display:inline-block; height:20px; background:' + pwrStateColor(curState) + '; width:' + pct + '%; title="' + (ev.stateLabel || '') + '">"></div>';
+          if (pct > 0.05) barHtml += '<div style="display:inline-block; height:20px; background:' + pwrStateColor(curState) + '; width:' + pct + '%;" title="' + (ev.stateLabel || '') + '"></div>';
           curState = ev.state;
           lastMs = etMs;
         }
         var endBound = Math.min(Date.now(), dEndMs);
         var tailPct = ((endBound - lastMs) / 86400000) * 100;
-        if (tailPct > 0.05) barHtml += '<div style="display:inline-block; height:20px; background:' + pwrStateColor(curState) + '; width:' + tailPct + '%;"></div>';
+        if (tailPct > 0.05) {
+          // For the tail end of the modern timeline, default to current known online state if we somehow dropped events
+          var tailState = curState !== 5 ? curState : (isCurrentlyOnline ? 1 : 0);
+          barHtml += '<div style="display:inline-block; height:20px; background:' + pwrStateColor(tailState) + '; width:' + tailPct + '%;"></div>';
+        }
         if (Date.now() < dEndMs) {
           var futurePct = ((dEndMs - Date.now()) / 86400000) * 100;
           if (futurePct > 0.05) barHtml += '<div style="display:inline-block; height:20px; background:#f5f5ff; border-left:1px dashed #aaa; width:' + futurePct + '%;"></div>';

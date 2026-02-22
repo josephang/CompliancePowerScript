@@ -53,6 +53,9 @@ module.exports.scripttask = function (parent) {
             obj.db = obj.meshServer.pluginHandler.scripttask_db;
             obj.db_error = null;
             obj.resetQueueTimer();
+            // Run device-event retention cleanup at startup and every 6 hours
+            obj.enforceDeviceEventRetention();
+            obj.retentionTimer = setInterval(obj.enforceDeviceEventRetention, 6 * 60 * 60 * 1000);
             console.log("CompliancePowerScript: DB Successfully Initialized!");
         } catch (err) {
             obj.db_error = String(err) + " : " + String(err.stack);
@@ -369,9 +372,31 @@ module.exports.scripttask = function (parent) {
 
     obj.cleanHistory = function () {
         if (Math.round(Math.random() * 100) == 99) {
-            //obj.debug('Plugin', 'ScriptTask', 'Running history cleanup');
             obj.db.deleteOldHistory();
         }
+    };
+
+    // Default retention (days) per event type if no specific rule configured
+    var _defaultRetentionDays = { ipSeen: 180, lastUser: 180, bootTime: 180, powerHistory: 180 };
+
+    obj.enforceDeviceEventRetention = function () {
+        if (!obj.db || typeof obj.db.getRetentionRules !== 'function') return;
+        obj.db.getRetentionRules().then(function (rules) {
+            var ruleMap = {};
+            (rules || []).forEach(function (r) {
+                if (r.targetType === 'global' && r.eventType) {
+                    ruleMap[r.eventType] = r.days;
+                }
+            });
+            // Apply per-type retention (global rules take precedence over defaults)
+            var allTypes = Object.keys(_defaultRetentionDays);
+            allTypes.forEach(function (eventType) {
+                var days = (ruleMap[eventType] !== undefined) ? ruleMap[eventType] : _defaultRetentionDays[eventType];
+                var cutoff = Math.floor((Date.now() - days * 86400 * 1000) / 1000); // Unix seconds
+                obj.db.deleteOldDeviceEvents(eventType, cutoff)
+                    .catch(function (e) { console.log('ScriptPolicyCompliance retention cleanup error (' + eventType + '):', e); });
+            });
+        }).catch(function (e) { console.log('ScriptPolicyCompliance getRetentionRules error:', e); });
     };
 
     obj.downloadFile = function (req, res, user) {

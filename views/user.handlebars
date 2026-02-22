@@ -741,10 +741,10 @@
 
     if (state.length) {
       state.forEach(function (s) {
-        let tpl = '<td>' + (s.policyName || s.policyId) + '</td> \
-                <td><b>' + s.state + '</b></td> \
-                <td>' + (s.lastRunTime ? new Date(s.lastRunTime * 1000).toLocaleString() : 'Never') + '</td> \
-                <td><pre style="max-height:100px;overflow:auto;margin:0;">' + (s.lastOutput || '') + '</pre></td>';
+        let tpl = `<td>${s.policyName || s.policyId}</td>
+                <td><b>${s.state}</b></td>
+                <td>${s.lastRunTime ? new Date(s.lastRunTime * 1000).toLocaleString() : 'Never'}</td>
+                <td><pre style="max-height:100px;overflow:auto;margin:0;">${s.lastOutput || ''}</pre></td>`;
         let tr = compTbl.insertRow(-1);
         tr.innerHTML = tpl;
         tr.classList.add('stCRow');

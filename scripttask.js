@@ -24,6 +24,9 @@ module.exports.scripttask = function (parent) {
         'policyData',
         'smtpData',
         'complianceStateData',
+        'deviceEvents',
+        'complianceOverview',
+        'retentionRules',
         'malix_triggerOption',
         'hook_agentCoreIsStable',
         'server_startup'
@@ -58,6 +61,59 @@ module.exports.scripttask = function (parent) {
     obj.hook_agentCoreIsStable = function (agent) {
         if (typeof agent === 'object' && agent.dbNodeKey) {
             obj.evaluateDeviceCompliance(agent.dbNodeKey);
+            obj.recordComplianceEvents(agent).catch(e => {
+                console.log('CompliancePowerScript: recordComplianceEvents error', e);
+            });
+        }
+    };
+
+    obj.recordComplianceEvents = async function (agent) {
+        if (!obj.db) return;
+        var nodeId = agent.dbNodeKey;
+        var meshId = agent.dbMeshKey || null;
+
+        // Extract public IP from remoteaddrport (format: "1.2.3.4:port" or "::ffff:1.2.3.4:port")
+        var rawAddr = agent.remoteaddrport || '';
+        var ip = rawAddr.replace(/^::ffff:/, '').replace(/:\d+$/, '') || 'unknown';
+
+        // Record connection event (always)
+        await obj.db.addDeviceEvent(nodeId, meshId, 'agentConnected', { ip: ip });
+
+        // Record IP only if changed since last seen
+        var lastIp = await obj.db.getLastDeviceEvent(nodeId, 'ipSeen');
+        if (!lastIp.length || lastIp[0].data.ip !== ip) {
+            await obj.db.addDeviceEvent(nodeId, meshId, 'ipSeen', { ip: ip });
+        }
+
+        // Record boot time if changed
+        await obj.recordBootTimeIfChanged(nodeId, meshId);
+    };
+
+    obj.recordBootTimeIfChanged = async function (nodeId, meshId) {
+        try {
+            // MeshCentral stores node info in the DB; access via GetNode
+            var nodes = await new Promise((resolve, reject) => {
+                obj.meshServer.db.Get(nodeId, (err, docs) => {
+                    if (err) reject(err); else resolve(docs);
+                });
+            });
+            if (!nodes || !nodes.length) return;
+            var node = nodes[0];
+            // Boot time lives in osinforaw or osDesc depending on agent version
+            var bootTime = null;
+            if (node.osinforaw && node.osinforaw.LastBootUpTime) {
+                bootTime = node.osinforaw.LastBootUpTime;
+            } else if (node.osinfo && node.osinfo.lastBootUpTime) {
+                bootTime = node.osinfo.lastBootUpTime;
+            }
+            if (!bootTime) return;
+
+            var lastBoot = await obj.db.getLastDeviceEvent(nodeId, 'bootTime');
+            if (!lastBoot.length || lastBoot[0].data.bootTime !== bootTime) {
+                await obj.db.addDeviceEvent(nodeId, meshId, 'bootTime', { bootTime: bootTime });
+            }
+        } catch (e) {
+            // Node may not be fetchable, skip silently
         }
     };
 
@@ -354,6 +410,18 @@ module.exports.scripttask = function (parent) {
 
     obj.complianceStateData = function (message) {
         if (typeof pluginHandler.scripttask.complianceStateData == 'function') pluginHandler.scripttask.complianceStateData(message);
+    };
+
+    obj.deviceEvents = function (message) {
+        if (typeof pluginHandler.scripttask.deviceEvents == 'function') pluginHandler.scripttask.deviceEvents(message);
+    };
+
+    obj.complianceOverview = function (message) {
+        if (typeof pluginHandler.scripttask.complianceOverview == 'function') pluginHandler.scripttask.complianceOverview(message);
+    };
+
+    obj.retentionRules = function (message) {
+        if (typeof pluginHandler.scripttask.retentionRules == 'function') pluginHandler.scripttask.retentionRules(message);
     };
 
     obj.determineNextJobTime = function (s) {
@@ -952,6 +1020,48 @@ module.exports.scripttask = function (parent) {
                 break;
             case 'runComplianceEvaluation':
                 obj.evaluateDeviceCompliance(command.nodeId);
+                break;
+            case 'getDeviceEvents':
+                obj.db.getDeviceEvents(command.nodeId).then(events => {
+                    var targets = ['*', 'server-users'];
+                    obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'deviceEvents', nodeId: command.nodeId, events: events });
+                }).catch(e => { console.log('CompliancePowerScript ERROR getDeviceEvents:', e); });
+                break;
+            case 'getComplianceOverview':
+                obj.db.getAllDeviceEventNodes().then(allEvents => {
+                    // Aggregate: for each nodeId, latest of each event type
+                    var nodeMap = {};
+                    allEvents.forEach(ev => {
+                        if (!nodeMap[ev.nodeId]) nodeMap[ev.nodeId] = {};
+                        if (!nodeMap[ev.nodeId][ev.eventType]) nodeMap[ev.nodeId][ev.eventType] = ev; // sorted desc so first = latest
+                    });
+                    var overview = Object.keys(nodeMap).map(nodeId => ({
+                        nodeId: nodeId,
+                        lastIp: nodeMap[nodeId].ipSeen ? nodeMap[nodeId].ipSeen.data.ip : null,
+                        lastIpTimestamp: nodeMap[nodeId].ipSeen ? nodeMap[nodeId].ipSeen.timestamp : null,
+                        lastConnected: nodeMap[nodeId].agentConnected ? nodeMap[nodeId].agentConnected.timestamp : null,
+                        lastBoot: nodeMap[nodeId].bootTime ? nodeMap[nodeId].bootTime.data.bootTime : null,
+                        lastBootTimestamp: nodeMap[nodeId].bootTime ? nodeMap[nodeId].bootTime.timestamp : null
+                    }));
+                    var targets = ['*', 'server-users'];
+                    obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'complianceOverview', overview: overview });
+                }).catch(e => { console.log('CompliancePowerScript ERROR getComplianceOverview:', e); });
+                break;
+            case 'getRetentionRules':
+                obj.db.getRetentionRules().then(rules => {
+                    var targets = ['*', 'server-users'];
+                    obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'retentionRules', rules: rules });
+                }).catch(e => { console.log('CompliancePowerScript ERROR getRetentionRules:', e); });
+                break;
+            case 'saveRetentionRule':
+                obj.db.saveRetentionRule(command.rule).then(() => {
+                    obj.serveraction({ pluginaction: 'getRetentionRules' }, myparent, grandparent);
+                }).catch(e => { console.log('CompliancePowerScript ERROR saveRetentionRule:', e); });
+                break;
+            case 'deleteRetentionRule':
+                obj.db.deleteRetentionRule(command.id).then(() => {
+                    obj.serveraction({ pluginaction: 'getRetentionRules' }, myparent, grandparent);
+                }).catch(e => { console.log('CompliancePowerScript ERROR deleteRetentionRule:', e); });
                 break;
             default:
                 console.log('PLUGIN: ScriptTask: unknown action');

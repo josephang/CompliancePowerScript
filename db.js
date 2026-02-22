@@ -332,6 +332,65 @@ module.exports.CreateDB = function (meshserver) {
             return obj.scriptFile.deleteMany({ type: 'complianceHistory', time: { $lte: oldTime } });
         };
 
+
+        // --- Compliance Tab: Device Event Tracking ---
+
+        obj.addDeviceEvent = function (nodeId, meshId, eventType, data) {
+            var rec = {
+                type: 'deviceEvent',
+                eventType: eventType,
+                nodeId: nodeId,
+                meshId: meshId || null,
+                timestamp: Math.floor(Date.now() / 1000),
+                data: data || {}
+            };
+            return obj.scriptFile.insertOne(rec);
+        };
+
+        obj.getLastDeviceEvent = function (nodeId, eventType) {
+            return obj.scriptFile.find({ type: 'deviceEvent', nodeId: nodeId, eventType: eventType })
+                .sort({ timestamp: -1 }).limit(1).toArray();
+        };
+
+        obj.getDeviceEvents = function (nodeId) {
+            return obj.scriptFile.find({ type: 'deviceEvent', nodeId: nodeId })
+                .sort({ timestamp: -1 }).toArray();
+        };
+
+        obj.getAllDeviceEventNodes = function () {
+            // returns all distinct nodeId/eventType combos for overview
+            return obj.scriptFile.find({ type: 'deviceEvent' })
+                .sort({ timestamp: -1 }).toArray();
+        };
+
+        obj.deleteOldDeviceEvents = function (eventType, cutoffTimestamp) {
+            return obj.scriptFile.deleteMany({
+                type: 'deviceEvent',
+                eventType: eventType,
+                timestamp: { $lte: cutoffTimestamp }
+            });
+        };
+
+        // --- Compliance Tab: Retention Rules ---
+
+        obj.getRetentionRules = function () {
+            return obj.scriptFile.find({ type: 'complianceRetention' }).toArray();
+        };
+
+        obj.saveRetentionRule = function (rule) {
+            rule.type = 'complianceRetention';
+            if (rule._id) {
+                var id = rule._id;
+                return obj.scriptFile.updateOne({ _id: id }, { $set: rule });
+            } else {
+                return obj.scriptFile.insertOne(rule);
+            }
+        };
+
+        obj.deleteRetentionRule = function (id) {
+            return obj.scriptFile.deleteOne({ _id: id, type: 'complianceRetention' });
+        };
+
         obj.checkDefaults();
     };
 

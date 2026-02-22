@@ -1429,36 +1429,32 @@ module.exports.scripttask = function (parent) {
                                 stateLabel: powerStateLabels[stateNum] || (ev.msg || ('State ' + stateNum))
                             });
                         });
+
                         pEvents.sort(function (a, b) { return a.time - b.time; });
 
-                        // Clean up noisy events: coalesce similar states, heavily filter 'Disconnected' (-1)
+                        // Clean up noisy events using MeshCentral core's exact filtering logic:
+                        // 1. Skip all starting power 0 events (if not trailing another state).
+                        // 2. Coalesce back-to-back duplicate states.
+                        // 3. Filter out delta changes shorter than 2 minutes (120000ms).
                         var CleanEvents = [];
+                        var previousPower = null;
                         for (var i = 0; i < pEvents.length; i++) {
                             var curr = pEvents[i];
-                            if (CleanEvents.length > 0 && CleanEvents[CleanEvents.length - 1].state === curr.state) {
-                                continue;
+                            var j = i;
+
+                            if (CleanEvents.length === 0) { // First element
+                                // Skip all starting power '0' (Powered Off) events.
+                                if (curr.state === 0) continue;
+                                CleanEvents.push(curr);
+                                previousPower = curr.state;
+                            } else if (previousPower !== curr.state) { // Delta element
+                                // If this event is of a short duration (2 minutes or less), skip it.
+                                if ((j + 1 < pEvents.length) && ((pEvents[j + 1].time - curr.time) < 120)) continue;
+                                CleanEvents.push(curr);
+                                previousPower = curr.state;
                             }
-                            // Drop brief 'Disconnected' states (< 5 mins) closely flanked by exact same known state (e.g. On -> Disconnect(3m) -> On)
-                            if (curr.state === -1 && i > 0 && i < pEvents.length - 1) {
-                                var prev = CleanEvents[CleanEvents.length - 1];
-                                var next = pEvents[i + 1];
-                                if (prev.state === next.state && (next.time - curr.time) <= 300) {
-                                    continue;
-                                }
-                            }
-                            CleanEvents.push(curr);
                         }
                         pEvents = CleanEvents;
-
-                        // Coalesce one more time in case dropping flip-flops bridged two identical states
-                        var FinalEvents = [];
-                        for (var i = 0; i < pEvents.length; i++) {
-                            if (FinalEvents.length > 0 && FinalEvents[FinalEvents.length - 1].state === pEvents[i].state) {
-                                continue;
-                            }
-                            FinalEvents.push(pEvents[i]);
-                        }
-                        pEvents = FinalEvents;
 
                         // Pre-calculate duration for each segment (seconds until next event)
                         for (var i = 0; i < pEvents.length; i++) {

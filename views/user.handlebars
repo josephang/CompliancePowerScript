@@ -1442,7 +1442,7 @@
     function getNodeName(nodeId) {
       if (parent && parent.nodes) {
         var n = parent.nodes.find(function (x) { return x._id === nodeId; });
-        if (n) return n.name;
+        if (n) return n.name || nodeId.slice(-8);
       }
       return nodeId.slice(-8);
     }
@@ -1604,6 +1604,15 @@
           bootHtml += '<tr><td>' + fmtTs(ev.timestamp) + '</td><td>' + fmtBootTime(ev.data.bootTime) + '</td></tr>';
         }
       });
+
+      if (!ipHtml && message.event.nodeId) {
+        var currIp = getNodeLastIp(message.event.nodeId);
+        if (currIp) {
+          var ipLnk = '<a href="https://iplocation.com/?ip=' + encodeURIComponent(currIp) + '" target="_blank" rel="noopener" style="color:#0066cc;">' + currIp + '</a>';
+          ipHtml = '<tr><td><i style="color:#666;">Current</i></td><td>' + ipLnk + '</td></tr>';
+        }
+      }
+
       ipTbl.innerHTML = ipHtml || '<tr><td colspan="2" style="color:#999;">No records</td></tr>';
       if (userTbl) userTbl.innerHTML = userHtml || '<tr><td colspan="2" style="color:#999;">No records</td></tr>';
       bootTbl.innerHTML = bootHtml || '<tr><td colspan="2" style="color:#999;">No records</td></tr>';
@@ -1653,51 +1662,91 @@
           if (events.length > 500) html += '<tr><td colspan="2" style="color:#999;font-style:italic;">...and ' + (events.length - 500) + ' more events.</td></tr>';
           pt.innerHTML = html;
 
-          // Draw rudimentary power timeline "bars"
+          // MeshCentral-style 7-Day Power Grid
           var tl = document.getElementById('cev-power-timeline');
           if (tl) {
-            var tlHtml = '';
+            events.sort(function (a, b) { return (a.time || 0) - (b.time || 0); });
+
             var isCurrentlyOnline = false;
             if (parent && parent.nodes) {
               var n = parent.nodes.find(function (x) { return x._id === nodeId; });
               if (n) isCurrentlyOnline = (n.conn === 1 || n.icon === 1 || !!n.pconn);
             }
 
-            if (events.length === 0) {
-              if (isCurrentlyOnline) tlHtml = '<div style="width:100%; background:#28a745; height:100%; border-right:1px solid rgba(0,0,0,0.1);" title="Currently Online"></div>';
-              else tlHtml = '<div style="width:100%; background:#ccc; height:100%; text-align:center; font-size:11px; line-height:24px; color:#555;">Offline / No recent data</div>';
-            } else {
-              events.sort(function (a, b) { return (a.time || 0) - (b.time || 0); });
-              var firstEvent = events[0];
-              var firstIsOff = (firstEvent.msg && firstEvent.msg.toLowerCase().includes('disconnect')) || firstEvent.state === 0 || firstEvent.s === 0 || firstEvent.action === 'agentDisconnected';
+            var daysHtml = '<table style="width:100%; border-collapse:collapse; border:1px solid #ccc; margin-bottom:10px; font-size:12px;">';
+            daysHtml += '<thead><tr style="background:#eee; text-align:left;"><th style="padding:4px; width:100px; border-right:1px solid #ccc;">Day</th><th style="padding:4px;">7 Day Power State</th></tr></thead><tbody>';
 
-              var lastState = firstIsOff ? 1 : 0; // If the FIRST event is a disconnect, it MUST have been online before that.
-              var now = Date.now(), minTime = events[0].time || now - 86400000;
-              var range = now - minTime;
-              if (range <= 0) range = 1;
+            for (var d = 0; d < 7; d++) {
+              var dStart = new Date();
+              dStart.setHours(0, 0, 0, 0);
+              dStart.setDate(dStart.getDate() - d);
+              var dEnd = new Date(dStart.getTime() + 86400000);
+              var dayDateStr = dStart.toLocaleDateString();
 
-              // Very basic state assumption based on typical MeshCentral events
-              for (var i = 0; i < events.length; i++) {
-                var e = events[i];
-                var eTime = typeof e.time === 'number' ? e.time : new Date(e.time).getTime();
+              var dayEvents = events.filter(function (e) {
+                var et = typeof e.time === 'number' ? e.time : new Date(e.time).getTime();
+                return et >= dStart.getTime() && et < dEnd.getTime();
+              });
+
+              var priorEvents = events.filter(function (e) {
+                var et = typeof e.time === 'number' ? e.time : new Date(e.time).getTime();
+                return et < dStart.getTime();
+              });
+
+              var stateAtStart = 0;
+              if (priorEvents.length > 0) {
+                var lastE = priorEvents[priorEvents.length - 1];
+                var isLastOff = (lastE.msg && lastE.msg.toLowerCase().includes('disconnect')) || lastE.state === 0 || lastE.s === 0 || lastE.action === 'agentDisconnected';
+                stateAtStart = isLastOff ? 0 : 1;
+              } else {
+                stateAtStart = (isCurrentlyOnline && events.length === 0) ? 1 : 0;
+              }
+
+              var barHtml = '';
+              var lastTime = dStart.getTime();
+              var currentState = stateAtStart;
+
+              for (var i = 0; i < dayEvents.length; i++) {
+                var e = dayEvents[i];
+                var et = typeof e.time === 'number' ? e.time : new Date(e.time).getTime();
                 var isOff = (e.msg && e.msg.toLowerCase().includes('disconnect')) || e.state === 0 || e.s === 0 || e.action === 'agentDisconnected';
                 var isOn = (e.msg && e.msg.toLowerCase().includes('connect')) || e.state === 1 || e.state === 2 || e.s === 1 || e.s === 2;
 
-                var nextTime = (i + 1 < events.length) ? (typeof events[i + 1].time === 'number' ? events[i + 1].time : new Date(events[i + 1].time).getTime()) : now;
-                var duration = nextTime - eTime;
-                var percent = (duration / range) * 100;
+                var pct = ((et - lastTime) / 86400000) * 100;
+                if (pct > 0) {
+                  barHtml += '<div style="display:inline-block; height:16px; background:' + (currentState ? '#000' : '#f0f0f0') + '; width:' + pct + '%;"></div>';
+                }
 
-                if (isOn) lastState = 1;
-                else if (isOff) lastState = 0;
+                if (isOn) currentState = 1;
+                else if (isOff) currentState = 0;
+                lastTime = et;
+              }
 
-                var color = lastState ? '#28a745' : '#dc3545';
-                if (percent > 0.05) {
-                  tlHtml += '<div style="width:' + percent + '%; background:' + color + '; height:100%; border-right:1px solid rgba(0,0,0,0.1);" title="' + new Date(eTime).toLocaleString() + ' - ' + (e.msg || 'State changed') + '"></div>';
+              var now = Date.now();
+              var endTime = dEnd.getTime();
+              if (now < endTime) {
+                var pct1 = ((now - lastTime) / 86400000) * 100;
+                if (pct1 > 0) {
+                  barHtml += '<div style="display:inline-block; height:16px; background:' + (currentState ? '#000' : '#f0f0f0') + '; width:' + pct1 + '%;"></div>';
+                }
+                var pct2 = ((endTime - now) / 86400000) * 100;
+                if (pct2 > 0) {
+                  barHtml += '<div style="display:inline-block; height:16px; background:#fff; width:' + pct2 + '%;"></div>';
+                }
+              } else {
+                var pct = ((endTime - lastTime) / 86400000) * 100;
+                if (pct > 0) {
+                  barHtml += '<div style="display:inline-block; height:16px; background:' + (currentState ? '#000' : '#f0f0f0') + '; width:' + pct + '%;"></div>';
                 }
               }
+
+              daysHtml += '<tr><td style="border:1px solid #ccc; padding:4px;">' + dayDateStr + '</td><td style="border:1px solid #ccc; padding:2px; vertical-align:middle; background:#fff;"><div style="width:100%; height:16px; font-size:0; line-height:0; display:flex;">' + barHtml + '</div></td></tr>';
             }
-            if (!tlHtml) tlHtml = '<div style="width:100%; background:#ccc; height:100%; text-align:center; font-size:11px; line-height:24px; color:#555;">Waiting for more connection data...</div>';
-            tl.innerHTML = tlHtml;
+            daysHtml += '</tbody></table>';
+            tl.innerHTML = daysHtml;
+            tl.style.height = "auto";
+            tl.style.background = "transparent";
+            tl.style.border = "none";
           }
         }
       }
@@ -1708,7 +1757,7 @@
         var tbl = document.getElementById(tId);
         if (!tbl) return '';
         var rows = tbl.querySelectorAll('tr');
-        var csv = tTitle + '\\r\\n';
+        var csv = tTitle + '\n';
         rows.forEach(function (r) {
           var cells = r.querySelectorAll('td, th');
           var rowData = [];
@@ -1716,12 +1765,12 @@
             var txt = c.innerText.replace(/"/g, '""');
             rowData.push('"' + txt + '"');
           });
-          csv += rowData.join(',') + '\\r\\n';
+          csv += rowData.join(',') + '\n';
         });
         return csv;
       }
       var devName = document.getElementById('cev-detail-name').innerText;
-      var fileData = "Device Name: " + devName + "\\r\\n\\r\\n" + getTableCSV(tableId, title);
+      var fileData = "Device Name: " + devName + "\n\n" + getTableCSV(tableId, title);
 
       var blob = new Blob([fileData], { type: 'text/csv' });
       var url = window.URL.createObjectURL(blob);

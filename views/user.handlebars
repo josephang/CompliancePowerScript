@@ -1202,6 +1202,7 @@
       document.getElementById('scripts_endpoints').style.display = 'block';
       setActiveTab('tabScripts');
       parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getScripts' });
+      parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getExternalDownloadServer' });
       resizeIframe();
     }
 
@@ -1354,6 +1355,7 @@
         'action': 'plugin', 'plugin': 'scripttask', 'pluginaction': 'loadVariables',
         'nodeId': parent.currentNode._id
       });
+      parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getExternalDownloadServer' });
     }
 
     function selectPreviouslySelectedScript() {

@@ -351,20 +351,6 @@
             <br />
             <span class="flink" onclick="newVar();return false;">[+]</span>
           </div>
-          <div class="infoBar">Compliance State</div>
-          <div id="complianceState" class="infoContent">
-            <span style="display:block;margin:5px 0;">
-              <button
-                onclick="parent.meshserver.send({ 'action': 'plugin', 'plugin': 'scripttask', 'pluginaction': 'runComplianceEvaluation', 'nodeId': parent.currentNode._id });">Run
-                Evaluation Now</button>
-            </span>
-            <table id="compTbl" cellspacing="0" cellpadding="0" style="width:100%;font-size:smaller">
-              <th>Policy</th>
-              <th>State</th>
-              <th>Last Checked</th>
-              <th>Last Output</th>
-            </table>
-          </div>
         </div>
 
       </div>
@@ -1191,7 +1177,7 @@
         if (item.mtype == 2) {
           item.meshName = parent.meshes[item['meshid']].name;
           if (item._id == parent.currentNode._id) item.checked = 'checked '; else item.checked = '';
-          let tpl = `< tr class="stNodeRow">
+          let tpl = `<tr class="stNodeRow">
         <td><label><input type="checkbox" ${item.checked} name="runOn[]" value="${item._id}">
             <div class="nIcon j${item.icon}"></div>${item.name}
           </label></td>
@@ -1206,7 +1192,7 @@
       for (const i in parent.meshes) { // parent.meshes.forEach(function(i) {
         var item = { ...parent.meshes[i], ...{} };
         if (item.mtype == 2) {
-          let tpl = `< tr class="stNodeRow">
+          let tpl = `<tr class="stNodeRow">
           <td><label><input type="checkbox" onclick="selNodesByMesh(this);" value="${item._id}"> ${item.name}</label>
           </td>
           </tr> `;
@@ -1215,7 +1201,7 @@
       }
       var nodeRowIns = document.querySelector('#mRunTblTag');
       tagList.forEach(function (i) {
-        let tpl = `< tr class="stNodeRow">
+        let tpl = `<tr class="stNodeRow">
             <td><label><input type="checkbox" onclick="selNodesByTag(this)" value="${i}"> ${i}</label></td>
             </tr> `;
         nodeRowIns.insertAdjacentHTML('beforeend', tpl);
@@ -1306,10 +1292,6 @@
       });
       parent.meshserver.send({
         'action': 'plugin', 'plugin': 'scripttask', 'pluginaction': 'loadVariables',
-        'nodeId': parent.currentNode._id
-      });
-      parent.meshserver.send({
-        'action': 'plugin', 'plugin': 'scripttask', 'pluginaction': 'getComplianceState',
         'nodeId': parent.currentNode._id
       });
     }
@@ -1957,36 +1939,6 @@
     }
     parent.pluginHandler.scripttask.smtpData = function (message) {
       loadSmtpData(message.event.config, message.event.error);
-    }
-    parent.pluginHandler.scripttask.complianceStateData = function (message) {
-      var state = message.event.state || [];
-      var policyNames = {};
-      // Fetch policies to map names? They are not cached in user.handlebars, maybe just request them or
-      // rely on ID for now if policies aren't loaded.
-      // Actually, we can fetch policies globally, but for now we just show IDs or have the backend send
-      // enriched data.
-      // Let's modify later, for now just show basic state.
-
-      var compTbl = document.getElementById('compTbl');
-      var rows = compTbl.querySelectorAll('.stCRow');
-      if (rows.length) rows.forEach(function (r) { r.parentNode.removeChild(r); });
-
-      if (state.length) {
-        state.forEach(function (s) {
-          let tpl = `<td>${s.policyName || s.policyId}</td>
-                    <td><b>${s.state}</b></td>
-                    <td>${s.lastRunTime ? new Date(s.lastRunTime * 1000).toLocaleString() : 'Never'}</td>
-                    <td>
-                      <pre style="max-height:100px;overflow:auto;margin:0;">${s.lastOutput || ''}</pre>
-                    </td>`;
-          let tr = compTbl.insertRow(-1);
-          tr.innerHTML = tpl;
-          tr.classList.add('stCRow');
-          // alternate row colors:
-          if (compTbl.rows.length % 2 === 0) tr.style.backgroundColor = '#CCC';
-        });
-      }
-      resizeIframe();
     }
     function parseVariables() {
       var vTbl = document.getElementById('varTbl');

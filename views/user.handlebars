@@ -260,6 +260,7 @@
         <span onclick="goDelete();">Delete</span>
         <span onclick="goDownload();">Download</span>
         <span onclick="goRun();">&#9654; Run</span>
+        <span onclick="goScripts();">&#10227; Refresh</span>
         <span style="margin-left:8px;">Upload: <input type="file" id="files" name="files[]" multiple
             onchange="fileUpload();" style="display:inline;font-size:smaller;" /></span>
       </div>
@@ -648,7 +649,11 @@
 
       <!-- Overview Panel -->
       <div id="cev-overview">
-        <h2>Compliance <span style="font-size:14px;font-weight:normal;color:#888;">— Device Overview</span></h2>
+        <h2>Compliance <span style="font-size:14px;font-weight:normal;color:#888;">— Device Overview</span>
+          <button onclick="goCompliance()"
+            style="float:right; margin-top:-2px; padding:3px 8px; font-size:12px; cursor:pointer;">&#10227;
+            Refresh</button>
+        </h2>
         <div style="margin-bottom:8px; display:flex; gap:10px; align-items:center;">
           <input type="text" id="cev-search" placeholder="Search by device or user..."
             oninput="filterComplianceOverview()"
@@ -659,6 +664,7 @@
             <thead>
               <tr>
                 <th onclick="sortComplianceOverview('name')" style="cursor:pointer;">Device &#9660;</th>
+                <th>Description</th>
                 <th onclick="sortComplianceOverview('user')" style="cursor:pointer;">Last User &#9660;</th>
                 <th>Last IP <span style="font-size:11px;font-weight:normal;">(seen)</span></th>
                 <th>Last Boot Time</th>
@@ -1414,6 +1420,14 @@
       return nodeId.slice(-8);
     }
 
+    function getNodeDesc(nodeId) {
+      if (parent && parent.nodes) {
+        var n = parent.nodes.find(function (x) { return x._id === nodeId; });
+        if (n && n.desc) return n.desc;
+      }
+      return '';
+    }
+
     function fmtTs(ts) {
       if (!ts) return '-';
       return new Date(ts * 1000).toLocaleString();
@@ -1459,8 +1473,10 @@
           : '-';
         var ipCell = ipLink + '<br><span style="color:#999;font-size:11px;">' + fmtTs(row.lastIpTimestamp) + '</span>';
 
+        var desc = getNodeDesc(row.nodeId);
         html += '<tr data-name="' + name.toLowerCase() + '" data-user="' + (row.lastUser || '').toLowerCase() + '">';
         html += '<td>' + name + '</td>';
+        html += '<td>' + (desc || '<span style="color:#bbb;font-style:italic;">-</span>') + '</td>';
         html += '<td>' + (row.lastUser || '<span style="color:#bbb;font-style:italic;">-</span>') + '</td>';
         html += '<td>' + ipCell + '</td>';
         html += '<td>' + fmtBootTime(row.lastBoot) + '</td>';
@@ -1510,7 +1526,9 @@
       var ipHtml = '', userHtml = '', bootHtml = '';
       events.forEach(function (ev) {
         if (ev.eventType === 'ipSeen') {
-          ipHtml += '<tr><td>' + fmtTs(ev.timestamp) + '</td><td>' + (ev.data.ip || '-') + '</td></tr>';
+          var ipVal = ev.data.ip;
+          var ipLnk = ipVal ? '<a href="https://iplocation.com/?ip=' + encodeURIComponent(ipVal) + '" target="_blank" rel="noopener" style="color:#0066cc;">' + ipVal + '</a>' : '-';
+          ipHtml += '<tr><td>' + fmtTs(ev.timestamp) + '</td><td>' + ipLnk + '</td></tr>';
         } else if (ev.eventType === 'lastUser') {
           userHtml += '<tr><td>' + fmtTs(ev.timestamp) + '</td><td>' + (ev.data.user || '-') + '</td></tr>';
         } else if (ev.eventType === 'bootTime') {

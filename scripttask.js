@@ -277,12 +277,21 @@ module.exports.scripttask = function (parent) {
                 return;
             }
             // default user view (tree)
-            vars.scriptTree = 'null';
-            obj.db.getScriptTree()
-                .then(tree => {
-                    vars.scriptTree = JSON.stringify(tree);
-                    res.render(obj.VIEWS + 'user', vars);
-                });
+            try {
+                if (!obj.db) { res.status(500).send("CRASH: obj.db is completely undefined! Did db.js fail to load?"); return; }
+                if (typeof obj.db.getScriptTree !== 'function') { res.status(500).send("CRASH: obj.db.getScriptTree is not a function! db.js missing exports?"); return; }
+
+                vars.scriptTree = 'null';
+                obj.db.getScriptTree()
+                    .then(tree => {
+                        vars.scriptTree = JSON.stringify(tree);
+                        res.render(obj.VIEWS + 'user', vars);
+                    }).catch(err => {
+                        res.status(500).send("<pre>CRASH Promise Rejected in getScriptTree: " + String(err) + "\nSTACK: " + String(err.stack) + "</pre>");
+                    });
+            } catch (err) {
+                res.status(500).send("<pre>CRASH Synchronous Exception in handleAdminReq: " + String(err) + "\nSTACK: " + String(err.stack) + "</pre>");
+            }
             return;
         } else if (req.query.include == 1) {
             switch (req.query.path.split('/').pop().split('.').pop()) {

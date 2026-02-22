@@ -655,7 +655,7 @@
             Refresh</button>
         </h2>
         <div style="margin-bottom:8px; display:flex; gap:10px; align-items:center;">
-          <input type="text" id="cev-search" placeholder="Search by device or user..."
+          <input type="text" id="cev-search" placeholder="Search by device, description, or user..."
             oninput="filterComplianceOverview()"
             style="padding:5px 8px; border:1px solid #ccc; border-radius:3px; width:240px; font-size:13px;">
         </div>
@@ -664,7 +664,7 @@
             <thead>
               <tr>
                 <th onclick="sortComplianceOverview('name')" style="cursor:pointer;">Device &#9660;</th>
-                <th>Description</th>
+                <th onclick="sortComplianceOverview('desc')" style="cursor:pointer;">Description &#9660;</th>
                 <th onclick="sortComplianceOverview('user')" style="cursor:pointer;">Last User &#9660;</th>
                 <th>Last IP <span style="font-size:11px;font-weight:normal;">(seen)</span></th>
                 <th>Last Boot Time</th>
@@ -1136,6 +1136,7 @@
       document.getElementById('compliance_endpoints').style.display = 'none';
       document.getElementById('scripts_endpoints').style.display = 'block';
       setActiveTab('tabScripts');
+      parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getScripts' });
       resizeIframe();
     }
 
@@ -1400,6 +1401,8 @@
       document.getElementById('smtp_endpoints').style.display = 'none';
       document.getElementById('compliance_endpoints').style.display = 'block';
       setActiveTab('tabCompliance');
+      var tbody = document.getElementById('cev-overview-body');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="color:#999;font-style:italic;">Loading...</td></tr>';
       parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getComplianceOverview' });
       parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getRetentionRules' });
       resizeIframe();
@@ -1474,7 +1477,7 @@
         var ipCell = ipLink + '<br><span style="color:#999;font-size:11px;">' + fmtTs(row.lastIpTimestamp) + '</span>';
 
         var desc = getNodeDesc(row.nodeId);
-        html += '<tr data-name="' + name.toLowerCase() + '" data-user="' + (row.lastUser || '').toLowerCase() + '">';
+        html += '<tr data-name="' + name.toLowerCase() + '" data-user="' + (row.lastUser || '').toLowerCase() + '" data-desc="' + desc.toLowerCase() + '">';
         html += '<td>' + name + '</td>';
         html += '<td>' + (desc || '<span style="color:#bbb;font-style:italic;">-</span>') + '</td>';
         html += '<td>' + (row.lastUser || '<span style="color:#bbb;font-style:italic;">-</span>') + '</td>';
@@ -1501,7 +1504,8 @@
       rows.forEach(function (r) {
         var name = (r.getAttribute('data-name') || '');
         var user = (r.getAttribute('data-user') || '');
-        r.style.display = (!q || name.includes(q) || user.includes(q)) ? '' : 'none';
+        var desc = (r.getAttribute('data-desc') || '');
+        r.style.display = (!q || name.includes(q) || user.includes(q) || desc.includes(q)) ? '' : 'none';
       });
     }
 
@@ -1509,8 +1513,12 @@
       if (complianceSortKey === key) complianceSortAsc = !complianceSortAsc;
       else { complianceSortKey = key; complianceSortAsc = true; }
       complianceOverviewData.sort(function (a, b) {
-        var av = (key === 'user' ? (a.lastUser || '') : getNodeName(a.nodeId)).toLowerCase();
-        var bv = (key === 'user' ? (b.lastUser || '') : getNodeName(b.nodeId)).toLowerCase();
+        var av, bv;
+        if (key === 'user') { av = (a.lastUser || ''); bv = (b.lastUser || ''); }
+        else if (key === 'desc') { av = getNodeDesc(a.nodeId); bv = getNodeDesc(b.nodeId); }
+        else { av = getNodeName(a.nodeId); bv = getNodeName(b.nodeId); }
+        av = av.toLowerCase(); bv = bv.toLowerCase();
+
         var cmp = av < bv ? -1 : av > bv ? 1 : 0;
         return complianceSortAsc ? cmp : -cmp;
       });

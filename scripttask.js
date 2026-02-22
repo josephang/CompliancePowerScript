@@ -908,6 +908,9 @@ module.exports.scripttask = function (parent) {
                         obj.updateFrontEnd({ scriptId: scriptId, nodeId: command.currentNodeId });
                     });
                 break;
+            case 'getScripts':
+                obj.updateFrontEnd({ tree: true });
+                break;
             case 'getScript':
                 //obj.debug('ScriptTask', 'getScript Triggered', JSON.stringify(command));
                 obj.db.get(command.scriptId)

@@ -1,0 +1,411 @@
+/*
+ * Veritimo — Modern Theme for MeshCentral
+ * Version 1.0  |  CompliancePowerScript Plugin
+ * Design: clean card-first UI, Inter typography, dark mode via prefers-color-scheme
+ */
+
+/* ── Google Fonts ─────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ── Design Tokens ────────────────────────────────────────────────────────── */
+:root {
+  --vt-font:          'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Brand */
+  --vt-accent:        #3b6ef5;
+  --vt-accent-hover:  #2d5be3;
+  --vt-accent-light:  #e8eeff;
+  --vt-success:       #28a745;
+  --vt-warning:       #e6a800;
+  --vt-danger:        #dc3545;
+  --vt-purple:        #9370db;
+
+  /* Light palette */
+  --vt-bg:            #f4f5f7;
+  --vt-surface:       #ffffff;
+  --vt-surface-2:     #f0f2f6;
+  --vt-border:        #e0e3ea;
+  --vt-text:          #1a1d23;
+  --vt-text-muted:    #6b7280;
+  --vt-shadow:        0 2px 8px rgba(0,0,0,.08);
+  --vt-shadow-lg:     0 4px 20px rgba(0,0,0,.12);
+  --vt-radius:        8px;
+  --vt-radius-sm:     5px;
+  --vt-transition:    .18s ease;
+}
+
+/* ── Dark Mode Tokens ─────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --vt-bg:          #0f1117;
+    --vt-surface:     #1a1d26;
+    --vt-surface-2:   #22263a;
+    --vt-border:      #2e3348;
+    --vt-text:        #e8eaf0;
+    --vt-text-muted:  #8b93a8;
+    --vt-shadow:      0 2px 8px rgba(0,0,0,.4);
+    --vt-shadow-lg:   0 4px 20px rgba(0,0,0,.5);
+    --vt-accent-light:#1e2a55;
+  }
+}
+
+/* Force dark when data-theme="dark" is set programmatically */
+[data-theme="dark"] {
+  --vt-bg:          #0f1117;
+  --vt-surface:     #1a1d26;
+  --vt-surface-2:   #22263a;
+  --vt-border:      #2e3348;
+  --vt-text:        #e8eaf0;
+  --vt-text-muted:  #8b93a8;
+  --vt-shadow:      0 2px 8px rgba(0,0,0,.4);
+  --vt-shadow-lg:   0 4px 20px rgba(0,0,0,.5);
+  --vt-accent-light:#1e2a55;
+}
+[data-theme="light"] {
+  --vt-bg:          #f4f5f7;
+  --vt-surface:     #ffffff;
+  --vt-surface-2:   #f0f2f6;
+  --vt-border:      #e0e3ea;
+  --vt-text:        #1a1d23;
+  --vt-text-muted:  #6b7280;
+  --vt-shadow:      0 2px 8px rgba(0,0,0,.08);
+  --vt-shadow-lg:   0 4px 20px rgba(0,0,0,.12);
+  --vt-accent-light:#e8eeff;
+}
+
+/* ── Base Reset ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family:      var(--vt-font) !important;
+  background:       var(--vt-bg) !important;
+  color:            var(--vt-text) !important;
+  font-size:        14px;
+  line-height:      1.55;
+  transition:       background var(--vt-transition), color var(--vt-transition);
+}
+
+/* ── Typography ───────────────────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--vt-font) !important;
+  color:       var(--vt-text) !important;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+a {
+  color: var(--vt-accent) !important;
+  text-decoration: none;
+  transition: opacity var(--vt-transition);
+}
+a:hover { opacity: .8; text-decoration: underline; }
+
+/* ── Top Navigation Bar ───────────────────────────────────────────────────── */
+#MenuBar, .menubar, #menubar,
+div[id*="MenuBar"], div[class*="menuBar"],
+body > table:first-of-type > tbody > tr:first-of-type > td {
+  background: var(--vt-surface) !important;
+  border-bottom: 1px solid var(--vt-border) !important;
+  box-shadow: var(--vt-shadow) !important;
+  color: var(--vt-text) !important;
+}
+
+/* Brand name in nav */
+#meshcentral-title, .siteTitle, span[style*="font-size:20px"] {
+  font-family: var(--vt-font) !important;
+  font-weight: 700 !important;
+  color: var(--vt-accent) !important;
+  letter-spacing: -.02em;
+}
+
+/* ── Sidebar / Left Panel ─────────────────────────────────────────────────── */
+#LeftPane, .leftPane, [id*="LeftPane"], [id*="leftPane"],
+td.mainBodyLeft {
+  background: var(--vt-surface) !important;
+  border-right: 1px solid var(--vt-border) !important;
+  color: var(--vt-text) !important;
+}
+
+/* Sidebar items */
+.sidebarItem, .leftPaneItem,
+a[onclick*="go("],
+a[onclick*="goDev("] {
+  border-radius: var(--vt-radius-sm) !important;
+  padding: 6px 10px !important;
+  margin: 1px 4px !important;
+  transition: background var(--vt-transition) !important;
+  color: var(--vt-text) !important;
+  display: block;
+}
+.sidebarItem:hover, .leftPaneItem:hover,
+a[onclick*="go("]:hover,
+a[onclick*="goDev("]:hover {
+  background: var(--vt-accent-light) !important;
+  color: var(--vt-accent) !important;
+}
+
+/* ── Main Content Area ────────────────────────────────────────────────────── */
+#MainBody, .mainBody, td.mainBodyRight,
+#DeskBody, #DeviceBody {
+  background: var(--vt-bg) !important;
+  color: var(--vt-text) !important;
+}
+
+/* ── Cards / Panels ───────────────────────────────────────────────────────── */
+.panel, .card, .infoBar + div,
+div[style*="background-color:#fff"],
+div[style*="background-color: #fff"],
+div[style*="background:#fff"],
+div[style*="background: #FFF"],
+div[style*="background-color:white"],
+div[style*="background: white"],
+.x-panel, .info-panel {
+  background:    var(--vt-surface) !important;
+  border:        1px solid var(--vt-border) !important;
+  border-radius: var(--vt-radius) !important;
+  box-shadow:    var(--vt-shadow) !important;
+  color:         var(--vt-text) !important;
+  transition:    box-shadow var(--vt-transition);
+}
+.panel:hover, .card:hover { box-shadow: var(--vt-shadow-lg) !important; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+button, input[type="button"], input[type="submit"],
+.button, a.button, .btn, .meshButton,
+input[type="button"][style],
+button[style],
+a[onclick][style*="color:white"],
+a[onclick][style*="color: white"] {
+  font-family:   var(--vt-font) !important;
+  font-size:     13px !important;
+  font-weight:   500 !important;
+  border-radius: var(--vt-radius-sm) !important;
+  border:        1px solid transparent !important;
+  padding:       5px 14px !important;
+  cursor:        pointer !important;
+  transition:    background var(--vt-transition), box-shadow var(--vt-transition), transform .1s !important;
+  letter-spacing: .01em;
+}
+button:active, input[type="button"]:active { transform: scale(.97) !important; }
+
+/* Primary buttons (blue background) */
+button[style*="background:#2378C3"],
+button[style*="background: #2378C3"],
+button[style*="background-color:#2378C3"],
+button[style*="background: blue"],
+input[type="button"][style*="background:#2378C3"],
+.meshButton-blue, .btn-primary {
+  background:  var(--vt-accent) !important;
+  color:       #fff !important;
+  box-shadow:  0 2px 6px rgba(59,110,245,.25) !important;
+}
+button[style*="background:#2378C3"]:hover,
+.meshButton-blue:hover, .btn-primary:hover {
+  background: var(--vt-accent-hover) !important;
+  box-shadow: 0 3px 10px rgba(59,110,245,.35) !important;
+}
+
+/* Danger buttons */
+button[style*="background:red"],
+button[style*="background:#dc3545"],
+button[style*="background-color:red"],
+.btn-danger { background: var(--vt-danger) !important; color: #fff !important; }
+
+/* ── Inputs / Selects / Textareas ─────────────────────────────────────────── */
+input[type="text"], input[type="password"], input[type="email"],
+input[type="number"], input[type="search"], input[type="url"],
+select, textarea {
+  font-family:   var(--vt-font) !important;
+  font-size:     13px !important;
+  background:    var(--vt-surface) !important;
+  color:         var(--vt-text) !important;
+  border:        1px solid var(--vt-border) !important;
+  border-radius: var(--vt-radius-sm) !important;
+  padding:       5px 9px !important;
+  outline:       none;
+  transition:    border-color var(--vt-transition), box-shadow var(--vt-transition) !important;
+}
+input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus,
+input[type="number"]:focus, select:focus, textarea:focus {
+  border-color: var(--vt-accent) !important;
+  box-shadow:   0 0 0 3px rgba(59,110,245,.15) !important;
+}
+input::placeholder, textarea::placeholder { color: var(--vt-text-muted) !important; }
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--vt-font) !important;
+}
+th {
+  background:    var(--vt-surface-2) !important;
+  color:         var(--vt-text-muted) !important;
+  font-size:     11px !important;
+  font-weight:   600 !important;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding:       8px 10px !important;
+  border-bottom: 2px solid var(--vt-border) !important;
+}
+td {
+  padding:     7px 10px !important;
+  border-bottom: 1px solid var(--vt-border) !important;
+  color:       var(--vt-text) !important;
+  font-size:   13px !important;
+  background:  transparent !important;
+}
+tr:hover > td {
+  background: var(--vt-accent-light) !important;
+  transition: background .12s;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.tab, .tabItem, [onclick*="setTab"],
+div[id*="Tab"][onclick] {
+  font-family: var(--vt-font) !important;
+  font-weight: 500 !important;
+  padding:     8px 16px !important;
+  border-radius: var(--vt-radius-sm) var(--vt-radius-sm) 0 0 !important;
+  cursor: pointer;
+  transition: background var(--vt-transition), color var(--vt-transition) !important;
+  color: var(--vt-text-muted) !important;
+  border: 1px solid transparent !important;
+}
+.tabSelected, .tab.selected, [style*="font-weight:bold"][onclick*="setTab"] {
+  background:   var(--vt-surface) !important;
+  color:        var(--vt-accent) !important;
+  border-color: var(--vt-border) !important;
+  border-bottom-color: var(--vt-surface) !important;
+}
+
+/* ── Status / Badge Chips ─────────────────────────────────────────────────── */
+.meshBadge, .badge, .chip,
+span[style*="border-radius"][style*="background"],
+td > span[style*="background:#"],
+td > span[style*="background: #"] {
+  border-radius: 999px !important;
+  font-size:     11px !important;
+  font-weight:   600 !important;
+  padding:       2px 9px !important;
+  letter-spacing: .03em;
+  display: inline-block;
+}
+
+/* ── Device List Items ────────────────────────────────────────────────────── */
+.deviceRow, tr.devrow, tr[onclick*="goDev"],
+tr[onmouseover*="devStyle"] {
+  cursor: pointer;
+  transition: background var(--vt-transition) !important;
+}
+.deviceRow:hover, tr.devrow:hover { background: var(--vt-accent-light) !important; }
+
+/* ── Accordion / Info Bars (plugin view) ──────────────────────────────────── */
+.infoBar {
+  background:  var(--vt-surface-2) !important;
+  border:      1px solid var(--vt-border) !important;
+  border-radius: var(--vt-radius-sm) !important;
+  color:       var(--vt-text) !important;
+  padding:     7px 12px !important;
+  font-weight: 600 !important;
+  cursor:      pointer;
+  transition:  background var(--vt-transition) !important;
+}
+.infoBar:hover { background: var(--vt-accent-light) !important; }
+.infoContent {
+  background: var(--vt-surface) !important;
+  border:     1px solid var(--vt-border) !important;
+  border-top: none !important;
+  border-radius: 0 0 var(--vt-radius-sm) var(--vt-radius-sm) !important;
+  padding:    10px 14px !important;
+  color:      var(--vt-text) !important;
+}
+
+/* ── Modals / Dialogs ─────────────────────────────────────────────────────── */
+.dialog, .modal, #dialog, [id*="Dialog"],
+div[style*="position:fixed"][style*="z-index"],
+div[style*="position: fixed"][style*="z-index"] {
+  font-family:   var(--vt-font) !important;
+  border-radius: var(--vt-radius) !important;
+  box-shadow:    var(--vt-shadow-lg) !important;
+  background:    var(--vt-surface) !important;
+  color:         var(--vt-text) !important;
+}
+
+/* ── Scrollbars (WebKit) ──────────────────────────────────────────────────── */
+::-webkit-scrollbar          { width: 6px; height: 6px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: var(--vt-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--vt-text-muted); }
+
+/* ── Dark Mode overrides for MeshCentral's inline colour hacks ────────────── */
+@media (prefers-color-scheme: dark) {
+  /* Many MeshCentral elements use bgcolor/color attrs or direct inline styles */
+  [bgcolor="#F8F8F8"], [bgcolor="#f8f8f8"],
+  [bgcolor="#EEEEEE"], [bgcolor="#eeeeee"],
+  [bgcolor="#E5E5E5"], [bgcolor="#e5e5e5"],
+  [bgcolor="white"],   [bgcolor="#FFFFFF"],
+  [bgcolor="#ffffff"] {
+    background-color: var(--vt-surface) !important;
+  }
+  [color="#000000"], [color="black"], [color="#333"],
+  [color="#333333"], [color="#444"], [color="#555"] {
+    color: var(--vt-text) !important;
+  }
+  [color="#999"], [color="#999999"],
+  [color="#aaa"], [color="#666"] {
+    color: var(--vt-text-muted) !important;
+  }
+  /* Dividers */
+  hr { border-color: var(--vt-border) !important; }
+}
+
+/* Same for forced [data-theme=dark] */
+[data-theme="dark"] [bgcolor="#F8F8F8"],
+[data-theme="dark"] [bgcolor="#EEEEEE"],
+[data-theme="dark"] [bgcolor="white"],
+[data-theme="dark"] [bgcolor="#FFFFFF"] {
+  background-color: var(--vt-surface) !important;
+}
+[data-theme="dark"] [color="#000000"],
+[data-theme="dark"] [color="black"],
+[data-theme="dark"] [color="#333333"] {
+  color: var(--vt-text) !important;
+}
+
+/* ── Notifications / Alerts ───────────────────────────────────────────────── */
+.alert-info, .notice, .notification {
+  background:    var(--vt-accent-light) !important;
+  border-left:   3px solid var(--vt-accent) !important;
+  border-radius: var(--vt-radius-sm) !important;
+  color:         var(--vt-text) !important;
+}
+
+/* ── Plugin iFrame wrapper ────────────────────────────────────────────────── */
+iframe[id*="plugin"], iframe[src*="pluginadmin"] {
+  border:        1px solid var(--vt-border) !important;
+  border-radius: var(--vt-radius) !important;
+  box-shadow:    var(--vt-shadow) !important;
+}
+
+/* ── Veritimo Dark Mode Toggle Button ────────────────────────────────────── */
+#vt-darkmode-btn {
+  position:    fixed;
+  bottom:      18px;
+  right:       18px;
+  z-index:     99999;
+  background:  var(--vt-surface);
+  border:      1px solid var(--vt-border);
+  border-radius: 50%;
+  width:       38px;
+  height:      38px;
+  display:     flex;
+  align-items: center;
+  justify-content: center;
+  cursor:      pointer;
+  font-size:   18px;
+  box-shadow:  var(--vt-shadow-lg);
+  transition:  background var(--vt-transition), transform .15s;
+  user-select: none;
+}
+#vt-darkmode-btn:hover { transform: scale(1.1); }

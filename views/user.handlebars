@@ -2,10 +2,24 @@
 
 <head>
   <script type="text/javascript" src="scripts/common-0.0.1.js"></script>
+  <!-- Veritimo Theme for plugin iframe -->
+  <link rel="stylesheet" href="/veritimo-theme/veritimo.css" id="veritimo-css">
+  <script>
+    // Sync dark/light theme from parent MeshCentral page
+    (function () {
+      try {
+        var stored = (window.parent && window.parent.localStorage)
+          ? window.parent.localStorage.getItem('veritimo-theme') : null;
+        var sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = stored || (sysDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) { }
+    }());
+  </script>
 </head>
 <style>
   body {
-    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    font-family: 'Inter', 'Trebuchet MS', Arial, Helvetica, sans-serif;
   }
 
   #dropBlock {

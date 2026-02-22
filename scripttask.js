@@ -1421,8 +1421,9 @@ module.exports.scripttask = function (parent) {
                             var tMs = normTime(ev.time || ev.d);
                             if (!tMs || isNaN(tMs) || tMs < timeLimitMs) return;
                             var stateNum = (ev.state !== undefined ? ev.state :
-                                (ev.s !== undefined ? ev.s :
-                                    (ev.p !== undefined ? ev.p : -1)));
+                                (ev.power !== undefined ? ev.power :
+                                    (ev.s !== undefined ? ev.s :
+                                        (ev.p !== undefined ? ev.p : -1))));
                             pEvents.push({
                                 time: Math.floor(tMs / 1000),
                                 state: stateNum,
@@ -1449,15 +1450,8 @@ module.exports.scripttask = function (parent) {
                                 previousPower = curr.state;
                             } else if (previousPower !== curr.state) { // Delta element
                                 // If this event is of a short duration (2 minutes or less), skip it.
-                                var isShort = (j + 1 < pEvents.length) && ((pEvents[j + 1].time - curr.time) < 120);
-                                if (isShort) {
-                                    previousPower = curr.state;
-                                    continue;
-                                }
-
-                                if (CleanEvents[CleanEvents.length - 1].state !== curr.state) {
-                                    CleanEvents.push(curr);
-                                }
+                                if ((j + 1 < pEvents.length) && ((pEvents[j + 1].time - curr.time) < 120)) continue;
+                                CleanEvents.push(curr);
                                 previousPower = curr.state;
                             } else {
                                 previousPower = curr.state;

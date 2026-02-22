@@ -1708,21 +1708,38 @@
     }
 
     function vtApply(cfg) {
+      var isDark;
+      if (cfg.darkmode === 'dark') {
+        isDark = true;
+      } else if (cfg.darkmode === 'light') {
+        isDark = false;
+      } else {
+        isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+      var resolvedTheme = isDark ? 'dark' : 'light';
+
+      // If the parent page has veritimoApplyTheme, delegate to it (it handles body class + observer).
+      try {
+        if (typeof parent.veritimoApplyTheme === 'function') {
+          parent.veritimoApplyTheme(resolvedTheme);
+        } else {
+          // Fallback: manually apply to parent if veritimo.js hasn't loaded there yet
+          var pd = parent.document;
+          pd.documentElement.setAttribute('data-theme', resolvedTheme);
+          if (isDark) pd.body.classList.add('darkmode');
+          else pd.body.classList.remove('darkmode');
+        }
+      } catch (e) { /* cross-origin — skip */ }
+
+      // Apply to this iframe document too
+      document.documentElement.setAttribute('data-theme', resolvedTheme);
+
+      // CSS custom-property overrides (accent, radius, font size)
       var targets = [];
       try { targets.push(parent.document); } catch (e) { }
       targets.push(document);
       targets.forEach(function (doc) {
         var html = doc.documentElement;
-        // Dark mode
-        if (cfg.darkmode === 'dark') {
-          html.setAttribute('data-theme', 'dark');
-        } else if (cfg.darkmode === 'light') {
-          html.setAttribute('data-theme', 'light');
-        } else {
-          var sys = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-          html.setAttribute('data-theme', sys);
-        }
-        // CSS variables
         if (cfg.enabled !== false) {
           var accent = cfg.accent || '#3b6ef5';
           var rad = (cfg.radius || 8) + 'px';
@@ -1733,22 +1750,25 @@
           html.style.setProperty('--vt-radius', rad);
           html.style.setProperty('--vt-radius-sm', radSm);
           doc.body && (doc.body.style.fontSize = fs);
-          // Floating toggle button
-          var btn = doc.getElementById('vt-darkmode-btn');
-          if (btn) btn.style.display = cfg.floatbtn !== false ? 'flex' : 'none';
+          // Floating toggle button visibility
+          var fbtn = doc.getElementById('vt-darkmode-btn');
+          if (fbtn) fbtn.style.display = cfg.floatbtn !== false ? 'flex' : 'none';
         } else {
-          // Theme disabled: remove Veritimo CSS
+          // Theme disabled: remove Veritimo CSS link
           var lnk = doc.getElementById('veritimo-css');
           if (lnk) lnk.remove();
         }
       });
-      // Sync both Veritimo preference and MeshCentral core's 'darkmode' key
+
+      // Persist to both keys
       try {
-        var mcDarkVal = cfg.darkmode === 'dark' ? 'yes' : '';
-        parent.localStorage.setItem('veritimo-theme', cfg.darkmode === 'dark' ? 'dark' : cfg.darkmode === 'light' ? 'light' : 'system');
-        parent.localStorage.setItem('darkmode', mcDarkVal); // MC core key
+        parent.localStorage.setItem('veritimo-theme', resolvedTheme);
+        parent.localStorage.setItem('darkmode', isDark ? 'yes' : '');
       } catch (e) { }
-      try { localStorage.setItem('darkmode', cfg.darkmode === 'dark' ? 'yes' : ''); } catch (e) { }
+      try {
+        localStorage.setItem('veritimo-theme', resolvedTheme);
+        localStorage.setItem('darkmode', isDark ? 'yes' : '');
+      } catch (e) { }
     }
 
     function vtSave() {

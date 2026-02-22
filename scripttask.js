@@ -48,7 +48,7 @@ module.exports.scripttask = function (parent) {
 
     obj.server_startup = function () {
         try {
-            console.log("CompliancePowerScript: Attempting to initialize DB...");
+            console.log("ScriptPolicyCompliance: Attempting to initialize DB...");
             obj.meshServer.pluginHandler.scripttask_db = require(__dirname + '/db.js').CreateDB(obj.meshServer);
             obj.db = obj.meshServer.pluginHandler.scripttask_db;
             obj.db_error = null;
@@ -88,10 +88,10 @@ module.exports.scripttask = function (parent) {
             });
 
 
-            console.log("CompliancePowerScript: DB Successfully Initialized!");
+            console.log("ScriptPolicyCompliance: DB Successfully Initialized!");
         } catch (err) {
             obj.db_error = String(err) + " : " + String(err.stack);
-            console.log("CompliancePowerScript DB INITIALIZATION FATAL ERROR:", err, err.stack);
+            console.log("ScriptPolicyCompliance DB INITIALIZATION FATAL ERROR:", err, err.stack);
         }
     };
 
@@ -1185,12 +1185,12 @@ module.exports.scripttask = function (parent) {
                     }).catch(e => {
                         var targets = ['*', 'server-users'];
                         obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'policyData', error: 'Assignments Error: ' + String(e) });
-                        console.log("CompliancePowerScript ERROR getAllPolicyAssignments:", e);
+                        console.log("ScriptPolicyCompliance ERROR getAllPolicyAssignments:", e);
                     });
                 }).catch(e => {
                     var targets = ['*', 'server-users'];
                     obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'policyData', error: 'Policies Error: ' + String(e) });
-                    console.log("CompliancePowerScript ERROR getPolicies:", e);
+                    console.log("ScriptPolicyCompliance ERROR getPolicies:", e);
                 });
                 break;
             case 'savePolicy':
@@ -1230,7 +1230,7 @@ module.exports.scripttask = function (parent) {
                 }).catch(e => {
                     var targets = ['*', 'server-users'];
                     obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'smtpData', error: String(e) });
-                    console.log("CompliancePowerScript ERROR getSmtpConfig:", e);
+                    console.log("ScriptPolicyCompliance ERROR getSmtpConfig:", e);
                 });
                 break;
             case 'saveSmtpConfig':
@@ -1243,7 +1243,7 @@ module.exports.scripttask = function (parent) {
                     var targets = ['*', 'server-users'];
                     obj.meshServer.DispatchEvent(targets, obj, { nolog: true, action: 'plugin', plugin: 'scripttask', pluginaction: 'externalDownloadServerData', config: config[0] || {} });
                 }).catch(e => {
-                    console.log("CompliancePowerScript ERROR getExternalDownloadServer:", e);
+                    console.log("ScriptPolicyCompliance ERROR getExternalDownloadServer:", e);
                 });
                 break;
             case 'saveExternalDownloadServer':
@@ -1428,7 +1428,7 @@ module.exports.scripttask = function (parent) {
         try {
             nodemailer = require('nodemailer');
         } catch (e) {
-            console.log("CompliancePowerScript: nodemailer not found, cannot send emails.");
+            console.log("ScriptPolicyCompliance: nodemailer not found, cannot send emails.");
             return;
         }
 
@@ -1444,7 +1444,7 @@ module.exports.scripttask = function (parent) {
         }
 
         if (!smtpConfig || (!smtpConfig.host && !smtpConfig.service)) {
-            console.log("CompliancePowerScript: No SMTP config found.");
+            console.log("ScriptPolicyCompliance: No SMTP config found.");
             return;
         }
 

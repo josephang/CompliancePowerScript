@@ -5,15 +5,15 @@
   "author": "Joseph Ang & Ryan Blenis",
   "description": "Compliance Engine & Script Runner with GPO-style policies for endpoints",
   "hasAdminPanel": false,
-  "homepage": "https://github.com/josephang/CompliancePowerScript",
-  "changelogUrl": "https://raw.githubusercontent.com/josephang/CompliancePowerScript/main/changelog.md",
-  "configUrl": "https://raw.githubusercontent.com/josephang/CompliancePowerScript/main/config.json",
-  "downloadUrl": "https://github.com/josephang/CompliancePowerScript/archive/refs/tags/v1.0.2.zip",
+  "homepage": "https://github.com/josephang/ScriptPolicyCompliance",
+  "changelogUrl": "https://raw.githubusercontent.com/josephang/ScriptPolicyCompliance/main/changelog.md",
+  "configUrl": "https://raw.githubusercontent.com/josephang/ScriptPolicyCompliance/main/config.json",
+  "downloadUrl": "https://github.com/josephang/ScriptPolicyCompliance/archive/refs/tags/v1.0.2.zip",
   "repository": {
     "type": "git",
-    "url": "https://github.com/josephang/CompliancePowerScript.git"
+    "url": "https://github.com/josephang/ScriptPolicyCompliance.git"
   },
-  "versionHistoryUrl": "https://api.github.com/repos/josephang/CompliancePowerScript/tags",
+  "versionHistoryUrl": "https://api.github.com/repos/josephang/ScriptPolicyCompliance/tags",
   "meshCentralCompat": ">=1.1.35",
   "hooks": [
     "server_startup",

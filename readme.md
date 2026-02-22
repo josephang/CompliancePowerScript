@@ -1,4 +1,4 @@
-# CompliancePowerScript
+# ScriptPolicyCompliance
 
 A Compliance Engine & Script running plugin for the [MeshCentral2](https://github.com/Ylianst/MeshCentral) Project. This plugin extends the original MeshCentral-ScriptTask with GPO-style Policy Enforcement, comprehensive MySQL database support, and an intuitive UI for administrators to assign and monitor compliance across endpoints. It supports PowerShell, BAT, and Bash scripts. Windows, MacOS, and Linux endpoints are all supported. PowerShell can be run on any OS that has PowerShell installed, not just Windows.
 
@@ -14,7 +14,7 @@ A Compliance Engine & Script running plugin for the [MeshCentral2](https://githu
 Restart your MeshCentral server after making this change.
 
  To install, simply add the plugin configuration URL when prompted:
- `https://raw.githubusercontent.com/josephang/CompliancePowerScript/main/config.json`
+ `https://raw.githubusercontent.com/josephang/ScriptPolicyCompliance/main/config.json`
 
 ## Features
 - Add scripts to a central store

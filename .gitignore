@@ -1,3 +1,7 @@
 test_syntax.js
 test_policies.js
 views/*.orig
+
+syntax_check.js
+test_*.js
+merge_ui.py

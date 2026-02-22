@@ -1179,8 +1179,9 @@ module.exports.scripttask = function (parent) {
                     var nodeid = command.nodeId;
                     var limit = 5000;
                     var timeLimitMs = Date.now() - (command.days || 180) * 86400 * 1000;
+                    var domainId = (myparent && myparent.domain) ? myparent.domain.id : '';
 
-                    obj.meshServer.db.GetEvents([nodeid], obj.meshServer.domainId || null, limit, function (err, docs) {
+                    obj.meshServer.db.GetEvents([nodeid], domainId, limit, function (err, docs) {
                         var pEvents = [];
                         if (!err && docs) {
                             docs.forEach(function (ev) {

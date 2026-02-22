@@ -743,9 +743,6 @@
       <!-- Detail Drill-down Panel -->
       <div id="cev-detail" style="display:none;">
         <div style="float: right;">
-          <button onclick="downloadDeviceDetailsCSV()"
-            style="margin-right:10px; background:#17a2b8; color:#fff; border:none; padding:4px 10px; border-radius:3px; cursor:pointer;"
-            title="Download all details as CSV">Download CSV</button>
           <span class="flink" style="font-size:16px;" onclick="goCompliance();">&#10006;</span>
         </div>
         <div style="margin-bottom:10px;">
@@ -753,7 +750,10 @@
           &nbsp; <strong id="cev-detail-name" style="font-size:16px;"></strong>
         </div>
         <div class="cev-panel">
-          <div class="cev-section-title">&#128205; IP Address History</div>
+          <div class="cev-section-title">&#128205; IP Address History <button
+              onclick="downloadSpecificTableCSV('cev-ip-tbl', 'IP Address History')"
+              style="float:right; font-size:11px; padding:2px 6px; cursor:pointer; background:#17a2b8; color:#fff; border:none; border-radius:3px;">&#8681;
+              CSV</button></div>
           <table>
             <thead>
               <tr>
@@ -763,7 +763,10 @@
             </thead>
             <tbody id="cev-ip-tbl"></tbody>
           </table>
-          <div class="cev-section-title" style="margin-top:14px;">&#128100; Last User History</div>
+          <div class="cev-section-title" style="margin-top:14px;">&#128100; Last User History <button
+              onclick="downloadSpecificTableCSV('cev-user-tbl', 'Last User History')"
+              style="float:right; font-size:11px; padding:2px 6px; cursor:pointer; background:#17a2b8; color:#fff; border:none; border-radius:3px;">&#8681;
+              CSV</button></div>
           <table>
             <thead>
               <tr>
@@ -773,7 +776,10 @@
             </thead>
             <tbody id="cev-user-tbl"></tbody>
           </table>
-          <div class="cev-section-title" style="margin-top:14px;">&#9654; Boot Time History</div>
+          <div class="cev-section-title" style="margin-top:14px;">&#9654; Boot Time History <button
+              onclick="downloadSpecificTableCSV('cev-boot-tbl', 'Boot Time History')"
+              style="float:right; font-size:11px; padding:2px 6px; cursor:pointer; background:#17a2b8; color:#fff; border:none; border-radius:3px;">&#8681;
+              CSV</button></div>
           <table>
             <thead>
               <tr>
@@ -783,7 +789,10 @@
             </thead>
             <tbody id="cev-boot-tbl"></tbody>
           </table>
-          <div class="cev-section-title" style="margin-top:14px;" id="cev-power-title">&#9889; Power History</div>
+          <div class="cev-section-title" style="margin-top:14px;" id="cev-power-title">&#9889; Power History <button
+              onclick="downloadSpecificTableCSV('cev-power-tbl', 'Power History')"
+              style="float:right; font-size:11px; padding:2px 6px; cursor:pointer; background:#17a2b8; color:#fff; border:none; border-radius:3px;">&#8681;
+              CSV</button></div>
           <div id="cev-power-timeline"
             style="width:100%; height:24px; background:#e0e0e0; display:flex; margin-bottom:8px; border:1px solid #ccc; border-radius:3px; overflow:hidden;"
             title="Power Timeline (Green = Connected/On, Gray = Offline)"></div>
@@ -1454,9 +1463,15 @@
       return '';
     }
 
+    function getTzLabel(d) {
+      var m = d.toString().match(/\\((.*)\\)/);
+      return m ? m[1] : 'Local Time';
+    }
+
     function fmtTs(ts) {
       if (!ts) return '-';
-      return new Date(ts * 1000).toLocaleString();
+      var d = new Date(ts * 1000);
+      return d.toLocaleString() + ' (' + getTzLabel(d) + ')';
     }
 
     var complianceOverviewData = [];
@@ -1473,14 +1488,17 @@
           parseInt(wmi[1]), parseInt(wmi[2]) - 1, parseInt(wmi[3]),
           parseInt(wmi[4]), parseInt(wmi[5]), parseInt(wmi[6])
         ));
-        return d.toLocaleString();
+        return d.toLocaleString() + ' (' + getTzLabel(d) + ')';
       }
       // Unix timestamp (number or numeric string > 1e9)
       var n = Number(val);
-      if (!isNaN(n) && n > 1e9) return new Date(n < 1e12 ? n * 1000 : n).toLocaleString();
+      if (!isNaN(n) && n > 1e9) {
+        var ud = new Date(n < 1e12 ? n * 1000 : n);
+        return ud.toLocaleString() + ' (' + getTzLabel(ud) + ')';
+      }
       // ISO / already human-readable
       var d2 = new Date(val);
-      if (!isNaN(d2)) return d2.toLocaleString();
+      if (!isNaN(d2)) return d2.toLocaleString() + ' (' + getTzLabel(d2) + ')';
       return String(val);
     }
 
@@ -1571,7 +1589,7 @@
         } else if (ev.eventType === 'lastUser') {
           userHtml += '<tr><td>' + fmtTs(ev.timestamp) + '</td><td>' + (ev.data.user || '-') + '</td></tr>';
         } else if (ev.eventType === 'bootTime') {
-          bootHtml += '<tr><td>' + fmtTs(ev.timestamp) + '</td><td>' + (ev.data.bootTime || '-') + '</td></tr>';
+          bootHtml += '<tr><td>' + fmtTs(ev.timestamp) + '</td><td>' + fmtBootTime(ev.data.bootTime) + '</td></tr>';
         }
       });
       ipTbl.innerHTML = ipHtml || '<tr><td colspan="2" style="color:#999;">No records</td></tr>';
@@ -1661,12 +1679,12 @@
       }
     };
 
-    function downloadDeviceDetailsCSV() {
-      function getTableCSV(tableId, title) {
-        var tbl = document.getElementById(tableId);
+    function downloadSpecificTableCSV(tableId, title) {
+      function getTableCSV(tId, tTitle) {
+        var tbl = document.getElementById(tId);
         if (!tbl) return '';
         var rows = tbl.querySelectorAll('tr');
-        var csv = title + '\\n';
+        var csv = tTitle + '\\n';
         rows.forEach(function (r) {
           var cells = r.querySelectorAll('td, th');
           var rowData = [];
@@ -1676,21 +1694,18 @@
           });
           csv += rowData.join(',') + '\\n';
         });
-        return csv + '\\n';
+        return csv;
       }
       var devName = document.getElementById('cev-detail-name').innerText;
-      var fileData = "Device Name: " + devName + "\\n\\n";
-      fileData += getTableCSV('cev-ip-tbl', 'IP History');
-      fileData += getTableCSV('cev-user-tbl', 'Last User History');
-      fileData += getTableCSV('cev-boot-tbl', 'Boot Time History');
-      fileData += getTableCSV('cev-power-tbl', 'Power Events');
+      var fileData = "Device Name: " + devName + "\\n\\n" + getTableCSV(tableId, title);
 
       var blob = new Blob([fileData], { type: 'text/csv' });
       var url = window.URL.createObjectURL(blob);
       var a = document.createElement('a');
       a.setAttribute('hidden', '');
       a.setAttribute('href', url);
-      a.setAttribute('download', devName.replace(/\\W+/g, '_') + '_ComplianceHistory.csv');
+      var cleanTitle = title.replace(/\\W+/g, '');
+      a.setAttribute('download', devName.replace(/\\W+/g, '_') + '_' + cleanTitle + '.csv');
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

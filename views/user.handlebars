@@ -66,20 +66,42 @@
 
   #controlBar {
     width: 100%;
-    height: 20px;
-    border-bottom: 1px solid black;
+    height: 24px;
+    border-bottom: 2px solid #555;
     font-size: smaller;
-    margin-bottom: 7px;
+    margin-bottom: 0;
+    background: #eee;
   }
 
   #controlBar span {
     cursor: pointer;
-    padding-left: 4px;
-    padding-right: 4px;
+    padding: 4px 10px;
+    display: inline-block;
+    border-right: 1px solid #ccc;
+    color: #333;
   }
 
-  #controlBar>span:nth-child(n+2) {
-    border-left: 1px solid black;
+  #controlBar span:hover {
+    background: #ddd;
+  }
+
+  #controlBar span.tabActive {
+    background: #fff;
+    font-weight: bold;
+    border-bottom: 2px solid #fff;
+    color: #000;
+  }
+
+  #scriptToolbar span {
+    cursor: pointer;
+    padding: 3px 7px;
+    display: inline-block;
+    border-right: 1px solid #ddd;
+    color: #333;
+  }
+
+  #scriptToolbar span:hover {
+    background: #e0e0e0;
   }
 
   .infoBar {
@@ -222,21 +244,24 @@
 <body onload="doOnLoad();">
   <div id="scriptTaskUser">
     <div id="dropBlock" style="display:none;"><b>&checkmark;</b></div>
-    Upload: <input type="file" id="files" name="files[]" multiple onchange="fileUpload();" />
-    <hr />
     <div id="controlBar">
-      <span onclick="goNew();">New</span>
-      <span onclick="goRename();">Rename</span>
-      <span onclick="goEdit();">Edit</span>
-      <span onclick="goDelete();">Delete</span>
-      <span onclick="goNewFolder();">New Folder</span>
-      <span onclick="goDownload();">Download</span>
-      <span onclick="goRun();">Run</span>
-      <span onclick="goScripts();">Scripts</span>
-      <span onclick="goPolicy();">Compliance Policies</span>
-      <span onclick="goSmtp();">Email Notifications</span>
+      <span onclick="goScripts();" id="tabScripts" class="tabActive">Scripts</span>
+      <span onclick="goPolicy();" id="tabPolicies">Policies</span>
+      <span onclick="goSmtp();" id="tabSmtp">Email Notifications</span>
     </div>
     <div id="scripts_endpoints">
+      <div id="scriptToolbar"
+        style="padding:4px 6px; border-bottom:1px solid #ccc; background:#f5f5f5; font-size:smaller;">
+        <span onclick="goNew();">&#43; New</span>
+        <span onclick="goNewFolder();">&#128193; New Folder</span>
+        <span onclick="goRename();">Rename</span>
+        <span onclick="goEdit();">Edit</span>
+        <span onclick="goDelete();">Delete</span>
+        <span onclick="goDownload();">Download</span>
+        <span onclick="goRun();">&#9654; Run</span>
+        <span style="margin-left:8px;">Upload: <input type="file" id="files" name="files[]" multiple
+            onchange="fileUpload();" style="display:inline;font-size:smaller;" /></span>
+      </div>
       <div id="scriptContainer">
       </div>
       <div id="infoContainer">
@@ -428,7 +453,7 @@
 
 
         <div class="col" id="colList">
-          <h2>Compliance Policies</h2>
+          <h2>Policies</h2>
           <div class="panel">
             <button onclick="showEditForm(null);">+ Create New Policy</button>
             <table id="tblPolicies">
@@ -873,10 +898,20 @@
 
 
 
+    function setActiveTab(id) {
+      ['tabScripts', 'tabPolicies', 'tabSmtp'].forEach(function (t) {
+        var el = document.getElementById(t);
+        if (el) el.classList.remove('tabActive');
+      });
+      var active = document.getElementById(id);
+      if (active) active.classList.add('tabActive');
+    }
+
     function goScripts() {
       document.getElementById('policy_endpoints').style.display = 'none';
       document.getElementById('smtp_endpoints').style.display = 'none';
       document.getElementById('scripts_endpoints').style.display = 'block';
+      setActiveTab('tabScripts');
       resizeIframe();
     }
 
@@ -1075,6 +1110,7 @@
       document.getElementById('scripts_endpoints').style.display = 'none';
       document.getElementById('smtp_endpoints').style.display = 'none';
       document.getElementById('policy_endpoints').style.display = 'block';
+      setActiveTab('tabPolicies');
       doOnLoadPolicy();
       resizeIframe();
     }
@@ -1083,6 +1119,7 @@
       document.getElementById('scripts_endpoints').style.display = 'none';
       document.getElementById('policy_endpoints').style.display = 'none';
       document.getElementById('smtp_endpoints').style.display = 'block';
+      setActiveTab('tabSmtp');
       parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getSmtpConfig' });
       resizeIframe();
     }

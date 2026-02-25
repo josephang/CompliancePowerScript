@@ -2377,8 +2377,8 @@
       scopeTargetScriptId = el.getAttribute('x-data-id');
       variables.forEach(function (vd) {
         if (vd.scope == 'script' && vd.scopeTarget != scopeTargetScriptId) return;
-        if (vd.scope == 'mesh' && vd.scopeTarget != parent.currentNode.meshid) return;
-        if (vd.scope == 'node' && vd.scopeTarget != parent.currentNode._id) return;
+        if (vd.scope == 'mesh' && (!parent.currentNode || vd.scopeTarget != parent.currentNode.meshid)) return;
+        if (vd.scope == 'node' && (!parent.currentNode || vd.scopeTarget != parent.currentNode._id)) return;
         let actionHtml = `<span class="flink" onclick="editVar(this);">Edit</span> <span class="flink"
           onclick = "delVar(this);" > Delete</span > `;
         let tpl = '<td>' + vd.name + '</td> \
@@ -2395,13 +2395,15 @@
     parent.pluginHandler.scripttask.loadSchedule = function (message) {
       // cache script names
       var nNames = {}, sNames = {};
-      parent.nodes.forEach(function (n) {
+      var nodes = parent.nodes ? (Array.isArray(parent.nodes) ? parent.nodes : Object.values(parent.nodes)) : [];
+      nodes.forEach(function (n) {
         nNames[n._id] = n.name;
       });
-      scriptTree.forEach(function (s) {
+      var stree = scriptTree && Array.isArray(scriptTree) ? scriptTree : [];
+      stree.forEach(function (s) {
         if (s.type == 'script') sNames[s._id] = s.name;
       });
-      if (message.event.nodeSchedule != null && message.event.nodeId == parent.currentNode._id) {
+      if (message.event.nodeSchedule != null && parent.currentNode && message.event.nodeId == parent.currentNode._id) {
         var nTbl = document.getElementById('nSchTbl');
         var rows = nTbl.querySelectorAll('.stNSRow');
         if (rows.length) {
@@ -2540,13 +2542,13 @@
         var el = scriptEl[0];
         scopeTarget = el.getAttribute('x-data-id');
       } else if (scope == 'mesh') {
-        scopeTarget = parent.currentNode.meshid;
+        scopeTarget = parent.currentNode ? parent.currentNode.meshid : null;
       } else if (scope == 'node') {
-        scopeTarget = parent.currentNode._id;
+        scopeTarget = parent.currentNode ? parent.currentNode._id : null;
       }
       parent.meshserver.send({
         action: 'plugin', plugin: 'scripttask', pluginaction: 'newVar', name:
-          name, scope: scope, scopeTarget: scopeTarget, value: value, currentNodeId: parent.currentNode._id
+          name, scope: scope, scopeTarget: scopeTarget, value: value, currentNodeId: parent.currentNode ? parent.currentNode._id : ''
       });
 
     }
@@ -2566,14 +2568,14 @@
         var el = scriptEl[0];
         scopeTarget = el.getAttribute('x-data-id');
       } else if (scope == 'mesh') {
-        scopeTarget = parent.currentNode.meshid;
+        scopeTarget = parent.currentNode ? parent.currentNode.meshid : null;
       } else if (scope == 'node') {
-        scopeTarget = parent.currentNode._id;
+        scopeTarget = parent.currentNode ? parent.currentNode._id : null;
       }
       parent.meshserver.send({
         action: 'plugin', plugin: 'scripttask', pluginaction: 'editVar', id:
           varid, name: name, scope: scope, scopeTarget: scopeTarget, value: value, currentNodeId:
-          parent.currentNode._id
+          parent.currentNode ? parent.currentNode._id : ''
       });
     }
     function editVar(el) {
@@ -2595,7 +2597,7 @@
         varid = parent.document.getElementById('stvarid').value; parent.meshserver.send({
           action: 'plugin'
           , plugin: 'scripttask', pluginaction: 'deleteVar', id: varid, currentNodeId:
-            parent.currentNode._id
+            parent.currentNode ? parent.currentNode._id : ''
         });
     } function delVar(el) {
       var
@@ -2612,7 +2614,7 @@
       var id = parent.document.getElementById('stid').value;
       parent.meshserver.send({
         action: 'plugin', plugin: 'scripttask', pluginaction: 'rename', name:
-          name, id: id, currentNodeId: parent.currentNode._id
+          name, id: id, currentNodeId: parent.currentNode ? parent.currentNode._id : ''
       });
     }
     function goRename() {
@@ -2631,7 +2633,7 @@
       var fileType = parent.document.getElementById('stfiletype').value;
       parent.meshserver.send({
         action: 'plugin', plugin: 'scripttask', pluginaction: 'new', name:
-          name, parent_id: parent_id, filetype: fileType, currentNodeId: parent.currentNode._id
+          name, parent_id: parent_id, filetype: fileType, currentNodeId: parent.currentNode ? parent.currentNode._id : ''
       });
     }
     function goNew() {

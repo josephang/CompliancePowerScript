@@ -214,9 +214,15 @@
           <div class="panel" style="background-color:#f9f9f9; padding:15px; margin-bottom:20px; border:1px solid #ddd;">
             <h3 style="margin-top:0; color:#333;">Run Now</h3>
             <div id="multiRun">
-              <div style="margin-bottom:15px;"><button onclick="goAdvancedRun();"
+              <div style="margin-bottom:15px; display:flex; gap:10px; align-items:center;">
+                <select id="runNowScriptSelect"
+                  style="padding:5px; border-radius:3px; border:1px solid #ccc; width:250px;">
+                  <option value="">-- Select a Script --</option>
+                </select>
+                <button onclick="goAdvancedRun();"
                   style="padding:5px 10px; cursor:pointer; background:#28a745; color:#fff; border:none; border-radius:3px;">Run
-                  Selected Script on Target</button></div>
+                  Now</button>
+              </div>
               <div style="display:flex; gap:15px;">
                 <div style="flex:1; border:1px solid #ccc; background:#fff; padding:10px;">
                   <table id="mRunTbl" style="width:100%; border-collapse:collapse;">
@@ -1403,6 +1409,14 @@
       });
       resizeIframe();
       selectPreviouslySelectedScript();
+
+      var rnSelect = document.getElementById('runNowScriptSelect');
+      if (rnSelect) {
+        rnSelect.innerHTML = '<option value="">-- Select a Script --</option>';
+        scriptTree.filter(function (sc) { return sc.type !== 'folder'; }).forEach(function (sc) {
+          rnSelect.options.add(new Option(sc.name, sc._id));
+        });
+      }
     }
 
     parent.pluginHandler.scripttask.newScriptTree = function (message) {
@@ -1487,24 +1501,20 @@
         parent.setDialogMode(2, "Oops!", 1, null, 'No machines have been selected.');
         return;
       }
-      var selScript = document.querySelectorAll('.liselected');
-      if (selScript.length) {
-        var scriptId = selScript[0].getAttribute('x-data-id');
-        var sWin = window.open('/pluginadmin.ashx?pin=scripttask&user=1&schedule=1', 'schedule',
-          "width=800,height=600");
-        sWin.scriptId = scriptId;
-        sWin.nodes = sel;
-        window.schedCallback = function (opts) {
-          parent.meshserver.send({
-            'action': 'plugin',
-            'plugin': 'scripttask',
-            'pluginaction': 'addScheduledJob',
-            'scriptId': opts.scriptId,
-            'nodes': opts.nodes,
-            'currentNodeId': parent.currentNode._id,
-            'schedule': opts
-          });
-        };
+      var selScript = document.getElementById('runNowScriptSelect');
+      var scriptId = selScript ? selScript.value : null;
+      if (!scriptId || scriptId === '') {
+        var selScriptNode = document.querySelectorAll('.liselected');
+        if (selScriptNode.length) {
+          scriptId = selScriptNode[0].getAttribute('x-data-id');
+        }
+      }
+      if (scriptId && scriptId !== '') {
+        parent.meshserver.send({
+          'action': 'plugin', 'plugin': 'scripttask', 'pluginaction': 'runScript',
+          'scriptId': scriptId, 'nodes': sel, 'currentNodeId': (parent.currentNode ? parent.currentNode._id : '')
+        });
+        parent.setDialogMode(1, "Success", 1, null, 'Script execution queued for ' + sel.length + ' selected device(s).');
       } else {
         parent.setDialogMode(2, "Oops!", 1, null, 'No script has been selected to run on the machines.');
       }
@@ -1565,7 +1575,7 @@
       var sel = document.getElementById('sScripts');
       sel.innerHTML = '';
       if (scriptTree) {
-        var allSc = searchTreeForType(scriptTree, 'script');
+        var allSc = scriptTree.filter(function (sc) { return sc.type !== 'folder'; });
         allSc.forEach(function (sc) {
           sel.options.add(new Option(sc.name, sc._id));
         });

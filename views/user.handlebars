@@ -1711,12 +1711,13 @@
 
     function deleteSchedule(id) {
       if (confirm('Are you sure you want to delete this schedule?')) {
-        parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'deleteSchedule', id: id });
         document.getElementById('colEditSchedule').classList.add('hidden');
         document.getElementById('colAssignSchedule').classList.add('hidden');
-        // Optimistically remove from local array and re-render immediately
+        // Remove from local cache immediately for instant feedback
         _schedules = _schedules.filter(function (s) { return s._id !== id; });
         renderSchedules(_schedules);
+        // Send delete - server will broadcast updated list back
+        parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'deleteSchedule', id: id });
       }
     }
 
@@ -1725,6 +1726,7 @@
       document.getElementById('assignScheduleTitle').innerText = 'Assignments for: ' + name;
       document.getElementById('colAssignSchedule').classList.remove('hidden');
       document.getElementById('colEditSchedule').classList.add('hidden');
+      updateScheduleTargetList(); // populate Target dropdown immediately
       parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getScheduleAssignments', scheduleId: id });
     }
 

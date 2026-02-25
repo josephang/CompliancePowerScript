@@ -2754,17 +2754,8 @@
       parent.setDialogMode(2, "Delete " + name, 3, deleteEx, `Are you sure? <input type="hidden"
                           id = "stdelid" value = "${id}" /> `);
     }
-    function deleteScheduleEx() {
-      var id = parent.document.getElementById('stdelid').value;
-      parent.meshserver.send({
-        action: 'plugin', plugin: 'scripttask', pluginaction: 'delete', id: id
-      });
-    }
-    function deleteSchedule(el) {
-      var id = el.parentNode.parentNode.getAttribute('x-data-id');
-      parent.setDialogMode(2, "Delete Schedule", 3, deleteScheduleEx, `Are you sure you want to delete
-                        this schedule ? <input type="hidden" id="stdelid" value="${id}" />`);
-    }
+
+
     function toggleCollapse(el) {
       var xdf = el.getAttribute('x-data-path');
       var folderEls = document.querySelectorAll('.lifolder, .liscript');

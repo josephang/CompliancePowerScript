@@ -1552,7 +1552,8 @@
         var desc = getNodeDesc(row.nodeId);
         var dispUser = row.lastUser || getNodeLastUser(row.nodeId) || '';
         html += '<tr data-name="' + name.toLowerCase() + '" data-user="' + dispUser.toLowerCase() + '" data-desc="' + desc.toLowerCase() + '">';
-        html += '<td>' + name + '</td>';
+        var deviceLink = '<a href="/?id=' + row.nodeId + '" target="_top" style="color:#0066cc;text-decoration:none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'">' + name + '</a>';
+        html += '<td>' + deviceLink + '</td>';
         html += '<td>' + (desc || '<span style="color:#bbb;font-style:italic;">-</span>') + '</td>';
         html += '<td>' + (dispUser || '<span style="color:#bbb;font-style:italic;">-</span>') + '</td>';
         html += '<td>' + ipCell + '</td>';

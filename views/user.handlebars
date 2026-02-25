@@ -1306,34 +1306,38 @@
       });
       var tagList = [];
       var nodeRowIns = document.querySelector('#mRunTbl');
-      parent.nodes.forEach(function (i) {
-        var item = { ...i, ...{} };
-        if (item.mtype == 2) {
-          item.meshName = parent.meshes[item['meshid']].name;
-          if (parent.currentNode && item._id == parent.currentNode._id) item.checked = 'checked '; else item.checked = '';
-          let tpl = `<tr class="stNodeRow">
-        <td><label><input type="checkbox" ${item.checked} name="runOn[]" value="${item._id}">
-            <div class="nIcon j${item.icon}"></div>${item.name}
-          </label></td>
-        </tr> `;
-          nodeRowIns.insertAdjacentHTML('beforeend', tpl);
-          if (i.tags && i.tags.length) item.tags.forEach(function (t) { tagList.push(t) });
-          nodesObj[i._id] = i;
-        }
-      });
-      tagList = tagList.filter(onlyUnique); tagList = tagList.sort();
-      var nodeRowIns = document.querySelector('#mRunTblMesh');
-      for (const i in parent.meshes) { // parent.meshes.forEach(function(i) {
-        var item = { ...parent.meshes[i], ...{} };
-        if (item.mtype == 2) {
-          let tpl = `<tr class="stNodeRow">
-          <td><label><input type="checkbox" onclick="selNodesByMesh(this);" value="${item._id}"> ${item.name}</label>
-          </td>
+      if (parent.nodes) {
+        parent.nodes.forEach(function (i) {
+          var item = { ...i, ...{} };
+          if (item.mtype == 2) {
+            item.meshName = parent.meshes[item['meshid']].name;
+            if (parent.currentNode && item._id == parent.currentNode._id) item.checked = 'checked '; else item.checked = '';
+            let tpl = `<tr class="stNodeRow">
+          <td><label><input type="checkbox" ${item.checked} name="runOn[]" value="${item._id}">
+              <div class="nIcon j${item.icon}"></div>${item.name}
+            </label></td>
           </tr> `;
-          nodeRowIns.insertAdjacentHTML('beforeend', tpl);
+            nodeRowIns.insertAdjacentHTML('beforeend', tpl);
+            if (i.tags && i.tags.length) item.tags.forEach(function (t) { tagList.push(t) });
+            nodesObj[i._id] = i;
+          }
+        });
+      }
+      tagList = tagList.filter(onlyUnique); tagList = tagList.sort();
+      var nodeRowInsMesh = document.querySelector('#mRunTblMesh');
+      if (parent.meshes) {
+        for (const i in parent.meshes) { // parent.meshes.forEach(function(i) {
+          var item = { ...parent.meshes[i], ...{} };
+          if (item.mtype == 2) {
+            let tpl = `<tr class="stNodeRow">
+            <td><label><input type="checkbox" onclick="selNodesByMesh(this);" value="${item._id}"> ${item.name}</label>
+            </td>
+            </tr> `;
+            nodeRowInsMesh.insertAdjacentHTML('beforeend', tpl);
+          }
         }
       }
-      var nodeRowIns = document.querySelector('#mRunTblTag');
+      var nodeRowInsTag = document.querySelector('#mRunTblTag');
       tagList.forEach(function (i) {
         let tpl = `<tr class="stNodeRow">
             <td><label><input type="checkbox" onclick="selNodesByTag(this)" value="${i}"> ${i}</label></td>
@@ -1428,14 +1432,16 @@
       redrawScriptTree();
       selectPreviouslySelectedScript();
       updateNodesTable();
-      parent.meshserver.send({
-        'action': 'plugin', 'plugin': 'scripttask', 'pluginaction': 'loadNodeHistory',
-        'nodeId': parent.currentNode._id
-      });
-      parent.meshserver.send({
-        'action': 'plugin', 'plugin': 'scripttask', 'pluginaction': 'loadVariables',
-        'nodeId': parent.currentNode._id
-      });
+      if (parent.currentNode) {
+        parent.meshserver.send({
+          'action': 'plugin', 'plugin': 'scripttask', 'pluginaction': 'loadNodeHistory',
+          'nodeId': parent.currentNode._id
+        });
+        parent.meshserver.send({
+          'action': 'plugin', 'plugin': 'scripttask', 'pluginaction': 'loadVariables',
+          'nodeId': parent.currentNode._id
+        });
+      }
       parent.meshserver.send({ action: 'plugin', plugin: 'scripttask', pluginaction: 'getExternalDownloadServer' });
     }
 
@@ -1548,7 +1554,7 @@
       _schedules.forEach(function (s) {
         var tr = document.createElement('tr');
         var scriptNames = s.scriptIds.map(id => {
-          var sc = scriptTree ? searchTree(scriptTree, id) : null;
+          var sc = scriptTree ? scriptTree.find(x => x._id === id) : null;
           return sc ? sc.name : id;
         }).join(', ');
 

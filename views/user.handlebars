@@ -1384,11 +1384,10 @@
 
     function selNodesByTag(el) {
       var t = el.value;
-      var allNodes = Q('mRunTbl').querySelectorAll('input[type="checkbox"][name="runOn[]"]');
-      var checked = false;
-      if (el.checked) checked = true;
+      var allNodes = document.getElementById('mRunTbl').querySelectorAll('input[type="checkbox"][name="runOn[]"]');
+      var checked = el.checked ? true : false;
       allNodes.forEach(function (n) {
-        if (nodesObj[n.value].tags && nodesObj[n.value].tags.indexOf(t) > -1) n.checked = checked;
+        if (nodesObj[n.value] && nodesObj[n.value].tags && nodesObj[n.value].tags.indexOf(t) > -1) n.checked = checked;
       });
       return true;
     }
@@ -1523,7 +1522,7 @@
         else {
           parent.meshserver.send({
             'action': 'plugin', 'plugin': 'scripttask', 'pluginaction': 'runScript',
-            'scriptId': scriptId, 'nodes': [parent.currentNode._id], 'currentNodeId': parent.currentNode._id
+            'scriptId': scriptId, 'nodes': parent.currentNode ? [parent.currentNode._id] : [], 'currentNodeId': parent.currentNode ? parent.currentNode._id : ''
           });
         }
       } else {
